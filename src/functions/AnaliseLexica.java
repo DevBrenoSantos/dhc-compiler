@@ -4,7 +4,6 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import functions.SymbolTable;
 
 public class AnaliseLexica {
 
@@ -22,14 +21,10 @@ public class AnaliseLexica {
 
         try (InputStream in = new BufferedInputStream(new FileInputStream(path))) {
             int b = in.read();
-            int lookahead = in.read();
-
-            init((char) b); // primeiro byte analisado
+            init((char) b); // primeiro byte analisado, e para qual estado ele irá
 
             while (b != -1) {
                 char c = (char) b;
-                char nextC = (char) lookahead;
-                //abcd{
                 switch(estadoAtual) {
                     case 0: {
                         
@@ -37,7 +32,8 @@ public class AnaliseLexica {
                     case 1: { // escopo, bloco
                     }
                     case 2: { // identificador
-                        checkId(c, nextC);
+                        identifier(c);
+                        if (estadoAtual == 14) continue; // reanalisar o byte atual
                     }
                     case 3: { // String
                         
@@ -47,8 +43,7 @@ public class AnaliseLexica {
                         endLex(lex);
                     }
                 }
-                b = lookahead;
-                lookahead = in.read();
+                b = in.read();
             }
             System.out.flush();
         } catch (IOException e) {
@@ -57,9 +52,10 @@ public class AnaliseLexica {
         }
     }
 
-    private static void checkId(char c, char nextChar) {
-        if ((table.isAlpha(""+nextChar) || table.isDigit(""+nextChar))
-        || String.valueOf(nextChar).equals("_")) {
+    private static void identifier(char c) {
+        String ch = String.valueOf(c);
+        
+        if ((table.isLetter(ch) || table.isDigit(ch)) || c == '_') {
             lex += c;
         }
         else estadoAtual = 14;
@@ -67,13 +63,12 @@ public class AnaliseLexica {
 
 
     private static void init(char c) {
-        String ch = ""+c;
+        String ch = String.valueOf(c);
         if      (ch.matches("[ \n]")) estadoAtual = 0;
-        else if (ch.equals("{")) estadoAtual = 1;
+        else if (ch.matches("{|/\\*")) estadoAtual = 1;
         else if (ch.matches("[a-zA-Z_]")) estadoAtual = 2;
         else if (ch.matches("[0-9]")) estadoAtual = 3;
         else if (ch.equals("\"")) estadoAtual = 4;
-
     }
 
     private static void endLex(String lex) {
