@@ -21,15 +21,15 @@ public class AnaliseLexica {
 
         try (InputStream in = new BufferedInputStream(new FileInputStream(path))) {
             int b = in.read();
-            init((char) b); // primeiro byte analisado, e para qual estado ele irá
+            detectarEstado((char) b); // primeiro byte analisado, e para qual estado ele irá
 
             while (b != -1) {
                 char c = (char) b;
                 switch(estadoAtual) {
                     case 0: {
-                        
+                        detectarEstado(c);
                     }
-                    case 1: { // escopo, bloco
+                    case 1: { // espaço, \n
                     }
                     case 2: { // identificador
                         identifier(c);
@@ -62,7 +62,7 @@ public class AnaliseLexica {
     }
 
 
-    private static void init(char c) {
+    private static void detectarEstado(char c) {
         String ch = String.valueOf(c);
         if      (ch.matches("[ \n]")) estadoAtual = 0;
         else if (ch.matches("{|/\\*")) estadoAtual = 1;
@@ -72,9 +72,9 @@ public class AnaliseLexica {
     }
 
     private static void endLex(String lex) {
-        boolean exists = table.hasLex(lex);
+        boolean exists = table.hasSymbol(lex);
         if (!exists && !lex.equals("")) {
-            table.addLex(lex);
+            table.createSymbol(lex);
         }
         lex = "";
         estadoAtual = 0;

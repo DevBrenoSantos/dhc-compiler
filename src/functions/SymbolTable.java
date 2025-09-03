@@ -19,17 +19,17 @@ public class SymbolTable {
         "const", 3
     ));
 
-    public boolean hasLex(String lex) {
+    public boolean hasSymbol(String lex) {
         if (lexToId.containsKey(lex)) return true;
         return false;
     }
 
-    public void addLex(String lexema) {
+    public void createSymbol(String lexema) {
         idToSymbol.put(idToSymbol.size(), new Symbol(lexema));
         lexToId.put(lexema, idToSymbol.size());
     }
     
-    public void addLex(String lexema, int classe, int tipo, int endereco) {
+    public void createSymbol(String lexema, int classe, int tipo, int endereco) {
         idToSymbol.put(idToSymbol.size(), new Symbol(lexema, classe, tipo, endereco));
         lexToId.put(lexema, idToSymbol.size());
     }
