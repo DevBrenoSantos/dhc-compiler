@@ -6,3 +6,4 @@ public class App {
         readFile.read(args);
     }
 }
+// java -cp bin App test.txt
