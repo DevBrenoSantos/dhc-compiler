@@ -26,37 +26,32 @@ public class SymbolTable {
 
     public void addLex(String lexema) {
         idToSymbol.put(idToSymbol.size(), new Symbol(lexema));
+        lexToId.put(lexema, idToSymbol.size());
     }
     
     public void addLex(String lexema, int classe, int tipo, int endereco) {
-        idToSymbol.put(idToSymbol.size(), new Symbol(lexema, classe | 0, tipo, endereco));
+        idToSymbol.put(idToSymbol.size(), new Symbol(lexema, classe, tipo, endereco));
+        lexToId.put(lexema, idToSymbol.size());
     }
 
-    public boolean isAlpha(String text) {
-        return text.matches("[a-zA-Z]");
+    public boolean isLetter(String ch) {
+        return ch.matches("[a-zA-Z]");
     }
-
-    public boolean isDigit(String text) {
-        return text.matches("[0-9]");
+    public boolean isDigit(String ch) {
+        return ch.matches("[0-9]");
     }
-    public boolean isString(String text) {
-        return text.matches("\"[a-zA-Z_0-9]*[^\"\n]*\"$");
+    public boolean isString(String ch) {
+        return ch.matches("\"[a-zA-Z_0-9]*[^\"\n]*\"|\"\"$");
     }
 }
-
-class Regex {
-    String stringRegex = "\"[a-zA-Z_0-9]*[^\"\n]*\"$";
-    String digitRegex = "[0-9]";
-}
-
 
 class Symbol {
 
     private int id;
     private String lexema;
-    private int classe;
-    private int tipo;
-    private int endereco;
+    private int classe = 0;
+    private int tipo = 0;
+    private int endereco = 0;
 
     public Symbol(String lexema, int classe, int tipo, int endereco) {
         this.lexema = lexema;
@@ -68,10 +63,5 @@ class Symbol {
     public Symbol(String lexema) {
         this.lexema = lexema;
     }
-    public Symbol(int id, String lexema, int classe, int tipo, int endereco) {
-        this.lexema = lexema;
-        this.classe = classe;
-        this.tipo = tipo;
-        this.endereco = endereco;
-    }
+
 }
