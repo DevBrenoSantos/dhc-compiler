@@ -1,0 +1,34 @@
+S -> DECL | BLOCO | NULO
+
+NULO -> ; | S
+BLOCO -> begin CMD* end | S
+
+DECL -> (final | TYPE) id [,id]* (= const)?; | S
+
+TYPE -> int | byte | string | boolean
+ATTR -> id = (EXP | id);
+
+EXPA -> (TYPE)?  (id | const) (OPMATH (id | const))+ ;     // lembrar da possibilidade de parênteses no inicio e no fim da Expressão aritmética e lógica 
+EXPL -> (id | const) OPLOG (id | const) (ANDOR EXPL)* ;
+OPLOG -> not | == | < | > | <> | >= | <=
+OPMATH -> + | - | * | /
+ANDOR -> and | or 
+
+
+CMD -> 
+	(
+	id = (const); |
+	while EXPL BLOCO |
+	if EXPL BLOCO (else if EXPL BLOCO)* (else BLOCO)? |
+	readln, id |
+	write (EXPA [,EXPA]* | id [,id]*) |
+	writeln (EXPA [,EXPA]* | id [,id]*)
+	) | S;
+	
+
+
+
+Duvidas para o professor: 
+- Oque é "<>" ??
+- Como podemos colocar os "()" em regras da linguagem ??
+
