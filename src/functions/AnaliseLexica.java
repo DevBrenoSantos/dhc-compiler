@@ -372,6 +372,9 @@ public class AnaliseLexica {
         };
 
         AnaliseResult res = analise.analisar(entrada);
+        for (Token token : res.tokens) {
+            System.out.print(token.getLexema() + ", ");
+        }
         if (!res.success) {
             System.err.println("Erro: " + res.errorMessage);
         } else {
