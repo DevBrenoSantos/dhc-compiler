@@ -21,8 +21,8 @@ CMD ->
 	while EXPL BLOCO | 					// Tópico 5
 	if EXPL BLOCO (else if EXPL BLOCO)* (else BLOCO)? |			// Tópico 6
 	readln, id |			// Tópico 8 
-	write (EXPA [,EXPA]* | id [,id]* | const [,id]*) |				// Tópico 9
-	writeln (EXPA [,EXPA]* | id [,id]*) 
+	write (id | const | EXPA) [,(id | const | EXPA)]* |				// Tópico 9
+	writeln (id | const | EXPA) [id | const | EXPA]*\n
 	);
 	
 
