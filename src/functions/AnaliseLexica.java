@@ -164,7 +164,7 @@ public class AnaliseLexica {
                 }
                                 
                 // 1) Literais de string entre aspas duplas
-                if (c == '"') {
+                if (c == '"' ) {
                     int inicio = i;
                     i++; // pula a primeira aspas
                     StringBuilder sb = new StringBuilder();

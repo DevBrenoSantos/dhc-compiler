@@ -132,7 +132,7 @@ class Token {
     public int getClasse() { return classe; }
     public int getTipo() { return tipo; }
     public int getEndereco() { return endereco; }
-
+    
     /**
      * Converte o símbolo para uma linha CSV (para salvar no arquivo).
      */
@@ -153,4 +153,5 @@ class Token {
             Integer.parseInt(parts[4])
         );
     }
+
 }
