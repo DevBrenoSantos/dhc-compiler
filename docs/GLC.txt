@@ -1,15 +1,15 @@
 S -> DECL | BLOCO | NULO
 
-NULO -> ; | S
-BLOCO -> begin CMD* end | S
+NULO -> ; 		// Tópico 7
+BLOCO -> begin CMD* end  | begin  end 					 // Tópico 3
 
-DECL -> (final | TYPE) id [,id]* (= const)?; | S
+DECL -> (final | TYPE) id [= const] [,id [= const]]*;    // Tópico 1,2 - (int a=5,b,c) 
 
 TYPE -> int | byte | string | boolean
-ATTR -> id = (EXP | id);
+ATTR -> id = (EXP | id | const); 			// Tópico 4
 
 EXPA -> (TYPE)?  (id | const) (OPMATH (id | const))+ ;     // lembrar da possibilidade de parênteses no inicio e no fim da Expressão aritmética e lógica 
-EXPL -> (id | const) OPLOG (id | const) (ANDOR EXPL)* ;
+EXPL -> (id | const) OPLOG (id | const) (ANDOR EXPL)* ;			// Expressão Lógica
 OPLOG -> not | == | < | > | <> | >= | <=
 OPMATH -> + | - | * | /
 ANDOR -> and | or 
@@ -17,18 +17,21 @@ ANDOR -> and | or
 
 CMD -> 
 	(
-	id = (const); |
-	while EXPL BLOCO |
-	if EXPL BLOCO (else if EXPL BLOCO)* (else BLOCO)? |
-	readln, id |
-	write (EXPA [,EXPA]* | id [,id]*) |
-	writeln (EXPA [,EXPA]* | id [,id]*)
-	) | S;
+	ATTR |
+	while EXPL BLOCO | 					// Tópico 5
+	if EXPL BLOCO (else if EXPL BLOCO)* (else BLOCO)? |			// Tópico 6
+	readln, id |			// Tópico 8 
+	write (EXPA [,EXPA]* | id [,id]* | const [,id]*) |				// Tópico 9
+	writeln (EXPA [,EXPA]* | id [,id]*) 
+	);
 	
 
 
 
 Duvidas para o professor: 
-- Oque é "<>" ??
+- Oque é "<>" ?? --> isso é igual a != no java 
 - Como podemos colocar os "()" em regras da linguagem ??
+- Como posso incluir a possibilidade de uma lista de valores --> incluida na regra do tópico 1,2
+
+
 
