@@ -1,4 +1,8 @@
 package functions;
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -17,7 +21,8 @@ public class AnaliseLexica {
     private Map<Integer, List<Token>> tabelaSimbolos = new HashMap<>();
     {
         // Linha 0 = categoria "Literal" inseridos na tabela durante a análise
-        tabelaSimbolos.put(0, new ArrayList<>());
+        tabelaSimbolos.put(0, new ArrayList<>(List.of(
+            new Token("true"), new Token("false"))));
 
         // Palavras reservadas
         tabelaSimbolos.put(1, new ArrayList<>(List.of( 
@@ -38,6 +43,7 @@ public class AnaliseLexica {
         new Token("-"), new Token("*"), new Token("/"), new Token(";"), new Token(","),
         new Token("{"), new Token("}")
     )));
+        tabelaSimbolos.put(4, new ArrayList<>());
 }
 
     /**
@@ -78,6 +84,7 @@ public class AnaliseLexica {
             case 1: return "Palavra Reservada";
             case 2: return "Tipo Primitivo";
             case 3: return "Símbolo Especial";
+            case 4: return "Identificador";
             default: return "Desconhecido";
         }
     }
@@ -108,6 +115,7 @@ public class AnaliseLexica {
         return s != null && simbolosEspeciaisSet.contains(s);
     }
 
+
     /**
      * Função pública principal: recebe um array de linhas (String[]) e realiza a análise léxica.
      * Retorna AnaliseResult com tokens em caso de sucesso ou erro descritivo em caso de falha.
@@ -118,17 +126,14 @@ public class AnaliseLexica {
      * - Reconhece números inteiros e floats como Literais (categoria "Literal").
      * - Reconhece identificadores (alfanuméricos que não são palavras reservadas).
      */
-    public AnaliseResult analisar(String[] linhas) {
-        if (linhas == null) {
+    public AnaliseResult analisar(String linha) {
+        if (linha == null) {
             return AnaliseResult.error("Entrada nula.");
         }
 
         List<Token> tokensReconhecidos = new ArrayList<>();
         int linhaNumero = 0;
 
-        for (String linha : linhas) {
-            linhaNumero++;
-            if (linha == null) linha = "";
 
             int i = 0;
             int len = linha.length();
@@ -270,7 +275,6 @@ public class AnaliseLexica {
 
                 // 4) Identificadores ou palavras reservadas: letra ou underscore seguido de letras/digitos/underscore
                 if (Character.isLetter(c) || c == '_') {
-                    int inicio = i;
                     StringBuilder sb = new StringBuilder();
                     while (i < len) {
                         char nc = linha.charAt(i);
@@ -289,14 +293,14 @@ public class AnaliseLexica {
             
                     } else {
                         tokensReconhecidos.add(new Token(lexema, "Identificador"));
-                        tabelaSimbolos.get(0).add(new Token(lexema, "Identificador")); 
+                        tabelaSimbolos.get(4).add(new Token(lexema, "Identificador")); 
                     }
                     continue;
                 }
 
                 // 5) Qualquer outro caractere: caractere inválido (erro léxico)
                 return AnaliseResult.error("Erro léxico: caractere inesperado '" + c + "' na linha " + linhaNumero + " coluna " + (i + 1));
-            }
+            
         }
 
         return AnaliseResult.ok(tokensReconhecidos);
@@ -351,25 +355,17 @@ public class AnaliseLexica {
     */
     public static void main(String[] args) {
         AnaliseLexica analise = new AnaliseLexica();
-        String[] entrada = new String[] {
-           "int n;",
-            "string nome;",
-            "boolean naoTerminou;",
-            "final MAXITER = 10;",
-            "{ Bloco Principal }",
-            "begin",
-            "    write, \"Digite seu nome: \";",
-            "    readln, nome;",
-            "    naoTerminou = true;",
-            "    n = 0;",
-            "    while naoTerminou begin",
-            "        writeln, \"Ola' \", nome;",
-            "        n = n + 1;",
-            "        naoTerminou = n < MAXITER;",
-            "    end",
-            "end"
+        InputStream in;
+        String entrada = null;
+        try {
+            in = new BufferedInputStream(new FileInputStream("docs/codigo_fonte_LC.txt"));
+            entrada = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            in.close();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
-        };
 
         AnaliseResult res = analise.analisar(entrada);
         for (Token token : res.tokens) {
@@ -421,7 +417,6 @@ class Token {
     private final int classe;     // Classe sintática (ex: identificador, palavra reservada), também pode ser usado para categoria
     private int tipo;       // Tipo de dado (ex: inteiro, string, byte)
     private int endereco;   // Endereço de memória ou posição na tabela
-
     /**
      * Construtor completo que gera ID automaticamente.
      */
@@ -439,7 +434,7 @@ class Token {
     public Token(String lexema, String categoria, int tipo, int endereco) {
         this.id = nextid++; // Gera ID único
         this.lexema = lexema;
-        this.classe = categoria.equals("Palavra Reservada") ? 1 : categoria.equals("Tipo Primitivo") ? 2 : categoria.equals("Símbolo Especial") ? 3 : 0;
+        this.classe = categoria.equals("Palavra Reservada") ? 1 : categoria.equals("Tipo Primitivo") ? 2 : categoria.equals("Símbolo Especial") ? 3 : categoria.equals("Identificador") ? 4 : 0;
         this.tipo = tipo;
         this.endereco = endereco;
     }
@@ -466,7 +461,7 @@ class Token {
     public Token(String lexema, String classe) {
         this.id = nextid++;
         this.lexema = lexema;
-        this.classe = classe.equals("Palavra Reservada") ? 1 : classe.equals("Tipo Primitivo") ? 2 : classe.equals("Símbolo Especial") ? 3 : 0;
+        this.classe = classe.equals("Palavra Reservada") ? 1 : classe.equals("Tipo Primitivo") ? 2 : classe.equals("Símbolo Especial") ? 3 : classe.equals("Identificador") ? 4 : 0;
           
     }
 
