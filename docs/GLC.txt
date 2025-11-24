@@ -8,9 +8,16 @@ DECL -> (final | TYPE) id [= const] [,id [= const]]*;    		// Tópico 1,2 - (int
 TYPE -> int | byte | string | boolean
 ATTR -> id = (id | const); 										// Tópico 4
 
-EXPA -> [TYPE]  (id | const) (OPMATH (id | const))+ ;     		// lembrar da possibilidade de parênteses no inicio e no fim da Expressão aritmética e lógica 
-EXPL -> (id | const) OPLOG (id | const) (ANDOR EXPL)* ;
-OPLOG -> not | == | < | > | <> | >= | <=
+EXPA -> (id | const) (OPMATH (id | const))+;     				// lembrar da possibilidade de parênteses no inicio e no fim da Expressão aritmética e lógica 
+
+EXPL -> EXPL_OR
+	EXPL_LOG -> (EXPA | const | id) OPLOG (EXPA | const | id)	
+	BOOL_VALUE -> EXPL_LOG | id | const | "(" EXPL ")"	
+	EXPL_NOT -> [not] "(" BOOL_VALUE ")"
+	EXPL_AND -> EXPL_NOT [and EXPL_NOT]*
+	EXPL_OR -> EXPL_AND [or EXPL_AND]*		
+
+OPLOG -> == | < | > | <> | >= | <=
 OPMATH -> + | - | * | /
 ANDOR -> and | or 
 
