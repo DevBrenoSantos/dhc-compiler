@@ -6,11 +6,6 @@ S
     ;
   DECL
     TYPE
-      string
-    nome
-    ;
-  DECL
-    TYPE
       boolean
     naoTerminou
     ;
@@ -23,74 +18,75 @@ S
   BLOCO
     begin
       CMD
-        write
-          ,
-          "Digite seu nome: "
-          ;
-        readln
-          ,
-          nome
+        ATTR
+          id
+            naoTerminou
+          =
+          EXPL
+            true
           ;
         ATTR
           id
             naoTerminou
           =
+          EXPL
+            n
+            OPLOG
+              <
+            MAXITER
           ;
         ATTR
           id
-            n
+            naoTerminou
           =
+          EXPL
+            n
+            OPLOG
+              <
+            MAXITER
+            AND
+              and
+            EXPA
+              (
+              n
+              OPMATH
+                +
+              MAXITER
+              )
+            OPLOG
+              >=
+            MAXITER
           ;
-        while
-          BLOCO
-            begin
-              CMD
-                writeln
-                  ,
-                  "Ola' "
-                  ,
-                  nome
-                  ;
-                ATTR
-                  id
-                    n
-                  =
-                  EXPA
-                    n
-                    OPMATH
-                      +
-                    1
-                  ;
-                ATTR
-                  id
-                    naoTerminou
-                  =
-                  ;
-            end
-        while
-          BLOCO
-            begin
-              CMD
-                writeln
-                  ,
-                  "Ola' "
-                  ,
-                  nome
-                  ;
-                ATTR
-                  id
-                    n
-                  =
-                  EXPA
-                    n
-                    OPMATH
-                      +
-                    1
-                  ;
-                ATTR
-                  id
-                    naoTerminou
-                  =
-                  ;
-            end
+        ATTR
+          id
+            naoTerminou
+          =
+          EXPL
+            not
+            (
+            naoTerminou
+            )
+          ;
+        ATTR
+          id
+            naoTerminou
+          =
+          EXPL
+            n
+            OPLOG
+              <
+            MAXITER
+            OR
+              or
+            EXPA
+              (
+              n
+              OPMATH
+                +
+              MAXITER
+              )
+            OPLOG
+              >=
+            MAXITER
+          ;
     end

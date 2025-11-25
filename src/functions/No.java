@@ -9,9 +9,18 @@ public class No {
     List<No> children = new ArrayList<>();
     No parent = null;
     
+    // Construtor para nós NÃO-TERMINAIS (sem token válido)
     No(String name) {
         this.name = name;
         this.children = new ArrayList<>();
+        this.token = new Token(name);  // Token dummy com classe = 0
+    }
+
+    // Construtor para nós TERMINAIS (com token da análise léxica)
+    No(String name, Token token) {
+        this.name = name;
+        this.children = new ArrayList<>();
+        this.token = token;  // Usa o token original da análise léxica
     }
 
     No(String name, No parent) {
@@ -19,9 +28,18 @@ public class No {
         this.parent = parent;
         this.parent.addChild(new No(name));
         this.children = new ArrayList<>();
+        this.token = new Token(name);
     }
 
-    No getChildByName(String name) {
+    // Construtor para nós TERMINAIS com parent
+    No(String name, Token token, No parent) {
+        this.name = name;
+        this.parent = parent;
+        this.children = new ArrayList<>();
+        this.token = token;
+    }
+
+    No get(String name) {
         List<No> rev = children.reversed();
         for (No c : rev) {
             if (c.name.equals(name)) return c;
@@ -32,15 +50,29 @@ public class No {
         child.setParent(this);
         children.add(child);
     }
+    void removeChild(No child) {
+        children.remove(child);
+    }
 
-    
     No getParent() {
         return this.parent;
     }
+    
     void setParent(No parent) {
         this.parent = parent;
     }
 
+    No get(int pos) {
+        return children.get(pos);
+    }
+    
+    Token getToken() {
+        return this.token;
+    }
+
+    int getSize() {
+        return children.size();
+    }
 
     void print(String prefix) {
         IO.println(prefix + (token != null ? token.getLexema() : name));

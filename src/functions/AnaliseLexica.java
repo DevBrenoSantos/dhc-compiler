@@ -28,7 +28,7 @@ public class AnaliseLexica {
         tabelaSimbolos.put(1, new ArrayList<>(List.of( 
         new Token("if"), new Token("return"), new Token("else"), new Token("and"),
         new Token("not"), new Token("begin"), new Token("end"), new Token("readln"),
-        new Token("write"), new Token("writeln"), new Token("true"), new Token("false"),
+        new Token("write"), new Token(" writeln"), new Token("true"), new Token("false"),
         new Token("final")
     )));
         // Tipos primitivos
@@ -44,6 +44,10 @@ public class AnaliseLexica {
         new Token("{"), new Token("}")
     )));
         tabelaSimbolos.put(4, new ArrayList<>());
+        // Literal byte
+        tabelaSimbolos.put(5, new ArrayList<>());
+        // literal string
+        tabelaSimbolos.put(6, new ArrayList<>());
 }
 
     /**
@@ -85,6 +89,8 @@ public class AnaliseLexica {
             case 2: return "Tipo Primitivo";
             case 3: return "Símbolo Especial";
             case 4: return "Identificador";
+            case 5: return "Literal Byte";
+            case 6: return "Literal String";
             default: return "Desconhecido";
         }
     }
@@ -167,6 +173,33 @@ public class AnaliseLexica {
                     }
                     continue; // pula o comentário
                 }
+
+                // parenteses para expressões
+
+                if (c == '(') {
+                    boolean fechado;
+                    int inicio = i;
+                    i++; // pula o '('
+                    tokensReconhecidos.add(new Token("(", "Símbolo Especial"));
+                    fechado = false;
+                    int pos = i;
+                    while (i < len) {
+                        char nc = linha.charAt(i);
+                        if (nc == ')') {
+                            fechado = true;
+                            i++; // consome o ')'
+                            break;
+                        } else {
+                            i++;
+                        }
+                    }
+
+                    if (!fechado) {
+                        return AnaliseResult.error("Erro léxico: comentário não terminado na linha " + linhaNumero + " começando em coluna " + (inicio+1));
+                    }
+                    else i = pos;
+                    continue; // pula o parênteses
+                }
                                 
                 // 1) Literais de string entre aspas duplas
                 if (c == '"' ) {
@@ -195,7 +228,7 @@ public class AnaliseLexica {
                         return AnaliseResult.error("Erro léxico: literal não terminado na linha " + linhaNumero + " começando em coluna " + (inicio+1));
                     }
                     String lexema = "\"" + sb.toString() + "\"";
-                    tokensReconhecidos.add(new Token(lexema, "Literal"));
+                    tokensReconhecidos.add(new Token(lexema, "Literal String"));
                     continue;
                 }
 
@@ -262,13 +295,13 @@ public class AnaliseLexica {
                             if (valor >= 0 && valor <= 255) {
                                 tokensReconhecidos.add(new Token(lexema, "Literal Byte"));
                             } else {
-                                tokensReconhecidos.add(new Token(lexema, "Literal"));
+                                tokensReconhecidos.add(new Token(lexema, "Literal Byte")); // int
                             }
                         } catch (NumberFormatException e) {
                             return AnaliseResult.error("Número decimal inválido na linha " + linhaNumero + " coluna " + (inicio + 1));
                         }
                     } else {
-                        tokensReconhecidos.add(new Token(lexema, "Literal Float"));
+                        tokensReconhecidos.add(new Token(lexema, "Literal Byte")); // float
                     }
                     continue;
                 }
@@ -286,6 +319,7 @@ public class AnaliseLexica {
                         }
                     }
                     String lexema = sb.toString();
+
                     Integer categoria = getKeyByValue(lexema);
                     if (categoria != null) {
                         String nomeCat = getCategoriaNome(categoria);
@@ -381,25 +415,6 @@ public class AnaliseLexica {
         }
     }
 
-  
-
-//   /* Exemplo de Programa na linguagem LC */
-// "int n;",
-// " string nome;",
-// "boolean naoTerminou;",
-// "final MAXITER=10;",
-// "{ Bloco Principal }",
-// "begin",
-// "    write, "Digite seu nome: ";",
-// "    readln, nome;",        
-// "    naoTerminou=true;",
-// "    n=0;",
-// "    while naoTerminou begin",
-// "        writeln,"Ola' ",   nome;",
-// "        n=n+1;",
-// "        naoTerminou=n<MAXITER;",
-// "    end",
-// "end"
 }
 
 /**
@@ -434,7 +449,8 @@ class Token {
     public Token(String lexema, String categoria, int tipo, int endereco) {
         this.id = nextid++; // Gera ID único
         this.lexema = lexema;
-        this.classe = categoria.equals("Palavra Reservada") ? 1 : categoria.equals("Tipo Primitivo") ? 2 : categoria.equals("Símbolo Especial") ? 3 : categoria.equals("Identificador") ? 4 : 0;
+        this.classe = categoria.equals("Palavra Reservada") ? 1 : categoria.equals("Tipo Primitivo") ? 2 : categoria.equals("Símbolo Especial") ? 3 : categoria.equals("Identificador") ? 4 :
+        categoria.equals("Literal Byte") ? 5 : categoria.equals("Literal String") ? 6 : 0;
         this.tipo = tipo;
         this.endereco = endereco;
     }
@@ -443,9 +459,8 @@ class Token {
      * Construtor simplificado que assume valores padrão para classe, tipo e endereço.
      */
     public Token(String lexema) {
-        this(this.id = nextid++,lexema, 0, 0, 0);
+        this(this.id = nextid++, lexema, 0, 0, 0);
     }
-    
 
     /**
      * Construtor usado ao carregar símbolos do arquivo, com ID já definido.
@@ -461,7 +476,8 @@ class Token {
     public Token(String lexema, String classe) {
         this.id = nextid++;
         this.lexema = lexema;
-        this.classe = classe.equals("Palavra Reservada") ? 1 : classe.equals("Tipo Primitivo") ? 2 : classe.equals("Símbolo Especial") ? 3 : classe.equals("Identificador") ? 4 : 0;
+        this.classe = classe.equals("Palavra Reservada") ? 1 : classe.equals("Tipo Primitivo") ? 2 : classe.equals("Símbolo Especial") ? 3 : classe.equals("Identificador") ? 4 : 
+        classe.equals("Literal Byte") ? 5 : classe.equals("Literal String") ? 6 : 0;
           
     }
 
@@ -472,24 +488,14 @@ class Token {
     public int getTipo() { return tipo; }
     public int getEndereco() { return endereco; }
 
-    /**
-     * Converte o símbolo para uma linha CSV (para salvar no arquivo).
-     */
-    public String toCSV() {
-        return id + "," + lexema + "," + classe + "," + tipo + "," + endereco;
-    }
+}
 
-    /**
-     * Converte uma linha CSV em um objeto Token.
-     */
-    public static Token fromCSV(String line) {
-        String[] parts = line.split(",");
-        return new Token(
-            Integer.parseInt(parts[0]),
-            parts[1],
-            Integer.parseInt(parts[2]),
-            Integer.parseInt(parts[3]),
-            Integer.parseInt(parts[4])
-        );
-    }
+enum TokenType {
+    IDENTIFIER,
+    KEYWORD,
+    TYPE,
+    SYMBOL,
+    LITERAL,
+    LITERAL_STRING,
+    LITERAL_INT,
 }

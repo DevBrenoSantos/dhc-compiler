@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import functions.AnaliseLexica.AnaliseResult;
@@ -17,14 +18,18 @@ public class AnaliseSintatica {
     private int pos = 0;
     private No raiz = new No("S");
     private Set<String> opAritmeticos = Set.of("+", "-", "*", "/");
-    private Set<String> opLogicos = Set.of("==", "<", ">", "<>", ">=", "<=");
+    private Set<String> opLogicos = Set.of("==", "<", ">", "<>", ">=", "<=", "not");
     private Set<String> andOr = Set.of("and", "or");
+
     AnaliseSintatica(List<Token> tokens) {
         this.tokens = tokens;
     }
 
     Token advance() {
         return pos < tokens.size() ? tokens.get(pos++) : null;
+    }
+    public No getRaiz() {
+        return this.raiz;
     }
     private Token peek() {
         return pos < tokens.size() ? tokens.get(pos) : null;
@@ -36,7 +41,7 @@ public class AnaliseSintatica {
     private boolean accept(String lexeme, No parent) {
         Token tk = peek();
         if (tk != null && tk.getLexema().equals(lexeme)) {
-            parent.addChild(new No(advance().getLexema()));
+            parent.addChild(new No(advance().getLexema(), tk));
             return true;
         }
         return false;
@@ -44,7 +49,7 @@ public class AnaliseSintatica {
     private boolean acceptClass(Set<Integer> classes, No parent, String label) {
         Token tk = peek();
         if (tk != null && classes.contains(tk.getClasse())) {
-            parent.addChild(new No(label));
+            parent.addChild(new No(label, tk));
             advance();
             return true;
         }
@@ -82,10 +87,10 @@ public class AnaliseSintatica {
 
     private No parseS() {
         while (peek() != null) {
-            if (parseDecl(raiz) == null && parseAttr(raiz) == null &&
-                parseBloco(raiz) == null && parseLinhaNula(raiz) == null) {
-                throw new RuntimeException("Erro de sintaxe na posicao: " + pos);
-            }
+            if (parseDecl(raiz) == null) break;
+        }
+        if (parseBloco(raiz) == null) {
+            reportError("Expected a block 'begin ... end'");
         }
         return raiz;
     }
@@ -108,17 +113,17 @@ public class AnaliseSintatica {
 
     private No parseDecl(No pai) {
         No noDecl = new No("DECL");
-
+        String tipo = peek().getLexema();
         if (parseTipo(noDecl) == null)
             if (!accept("final", noDecl)) return null; // não é uma declaração
-        
-        expectClass(Set.of(4), noDecl, peek().getLexema());
 
-        while (accept(",", noDecl))
+        do {
             expectClass(Set.of(4), noDecl, peek().getLexema());
+        }
+        while (accept(",", noDecl));
 
         if (accept("=", noDecl))
-            if (!acceptClass(Set.of(4, 0), noDecl, peek().getLexema())) return null;
+            if (!acceptClass(Set.of(4, 5, 6, 0), noDecl, peek().getLexema())) return null;
 
         expect(";", noDecl);
         pai.addChild(noDecl);
@@ -135,7 +140,7 @@ public class AnaliseSintatica {
         }
 
         expect("=", noAttr);
-        chooseExp(noAttr);
+        if (chooseExp(noAttr) == null) noAttr.addChild(new No(peek().getLexema(), peek())); // test
         expect(";", noAttr);
 
         pai.addChild(noAttr);
@@ -143,47 +148,116 @@ public class AnaliseSintatica {
     }
     private No chooseExp(No pai) {
 
-        if(parseTipo(pai) != null) {
-            parseExpMath(pai);
-            return pai;
-        }
         advance();
-
         if (opAritmeticos.contains(peek().getLexema())) {
             pos--;
             parseExpMath(pai);
             return pai;
         }
         else pos--;
-        parseExpLogica(pai);
+        
+        if (parseExpLogica(pai) == null) {
+            return null;
+        }
         return pai;
     }
     private No parseExpLogica(No pai) { // (id | const) OPLOG (id | const) [ANDOR EXPL]*
-        No expLogica = new No("EXPL");
-
-        expectClass(Set.of(4, 0), expLogica, peek().getLexema()); // (id | const)
-        No oplog = parseSymbolExp(expLogica, "OPLOG", opLogicos);
-        if (oplog != null) {
-            expectClass(Set.of(4, 0), expLogica, peek().getLexema());
+        No expl = new No("EXPL");
+        if (EXPL_OR(expl) == null) {
+            return null;
         }
 
-        No andor = parseSymbolExp(expLogica, "ANDOR", andOr);
-        if (andor != null) {
-            expectNo(parseExpLogica(expLogica));
+        pai.addChild(expl);
+        return expl;
+    }
+
+    private No EXPL_OR(No pai) {
+        if (EXPL_AND(pai) == null) return null;
+
+        while (parseSymbolExp(pai, "OR", Set.of("or")) != null) {
+            expectNo(EXPL_AND(pai));
         }
 
-        //pai.add(expLogica);
-        return expLogica;
+        return pai;
+    }
+
+    private No EXPL_AND(No pai) {
+        if (EXPL_NOT(pai) == null) return null;
+
+        while (parseSymbolExp(pai, "AND", Set.of("and")) != null) {
+            expectNo(EXPL_NOT(pai));
+        }
+
+
+        return pai;
+    }
+
+    private No EXPL_NOT(No pai) {
+        if (accept("not", pai)) {
+            expect("(", pai);
+            expectNo(BOOL_VALUE(pai));
+            expect(")", pai);
+        } else {
+            if (BOOL_VALUE(pai) == null) return null;
+        }
+
+
+        return pai;
+    }
+
+    private No BOOL_VALUE(No pai) {
+/*         if (accept("(", pai)) {
+            expectNo(parseExpLogica(pai));
+            expect(")", pai);
+            return pai;
+        } */
+
+            if (EXPL_REL(pai) != null) return pai;
+            else if (acceptClass(Set.of(4, 5, 6, 0), pai, peek().getLexema()))
+                return pai;
+
+
+
+        return null;
+    }
+    private No EXPL_REL(No pai) {
+        if (parseExpMath(pai) == null) {
+            if (!acceptClass(Set.of(4, 5, 6, 0), pai, peek().getLexema())) 
+                return null;
+        }
+
+        if (parseSymbolExp(pai, "OPLOG", opLogicos) != null) {
+            if (parseExpMath(pai) == null) {
+                if (!acceptClass(Set.of(4, 5, 6, 0), pai, peek().getLexema())) {
+                    pai.children = new ArrayList<>(); 
+                    pos--;
+                    return null;
+                }
+            }
+        }
+        else {
+            pai.children.remove(pai.children.size() - 1); // remove variavel do primeiro acceptClass
+            pos--; return null;
+        }
+
+
+
+        return pai;
     }
     private No parseExpMath(No pai) {
         No expMath = new No("EXPA");
-        expectClass(Set.of(4, 0), expMath, peek().getLexema());
+        accept("(", expMath);
+        expectClass(Set.of(4, 5, 6, 0), expMath, peek().getLexema());
 
-        parseSymbolExp(expMath, "OPMATH", opAritmeticos);
+        if (parseSymbolExp(expMath, "OPMATH", opAritmeticos) == null) {
+            pos--;
+            return null;
+        };
 
         do {
-            expectClass(Set.of(4, 0), expMath, peek().getLexema());
+            expectClass(Set.of(4, 5, 6, 0), expMath, peek().getLexema());
         } while ((parseSymbolExp(expMath, "OPMATH", opAritmeticos)) != null);
+        accept(")", expMath);
 
         pai.addChild(expMath);
         return expMath;
@@ -201,7 +275,7 @@ public class AnaliseSintatica {
         if (!accept("begin", bloco)) return null; // não é um bloco
         if (!peek().getLexema().equals("end")) {
             No cmd = new No("CMD");
-            bloco.getChildByName("begin").addChild(cmd);
+            bloco.get("begin").addChild(cmd);
             while (!peek().getLexema().equals("end")) {
                 parseCmd(cmd);
             }
@@ -216,6 +290,7 @@ public class AnaliseSintatica {
     private No parseCmd(No cmd) {
         // adicionar No para cada comando: writeln etc., e então adiciona-los para o No CMD
         if (parseAttr(cmd) != null) return cmd;
+        if (parseLinhaNula(cmd) != null) return cmd;
         if (accept("while", cmd)) return parseWhile(cmd);
         if (accept("if", cmd)) return parseIf(cmd);
         if (accept("readln", cmd)) return parseRead(cmd);
@@ -224,10 +299,9 @@ public class AnaliseSintatica {
     }
 
     private No parseWhile(No cmd) {
-        No child = cmd.getChildByName("while");
+        No child = cmd.get("while");
         expectNo(parseExpLogica(child));
         expectNo(parseBloco(child));
-        cmd.addChild(child);
         return child;
     }
 
@@ -247,19 +321,20 @@ public class AnaliseSintatica {
         return cmd;      
     }
     private No parseRead(No cmd) {
-        No child = cmd.getChildByName("readln");
+        No child = cmd.get("readln");
         expect(",", child);
         expectClass(Set.of(4), child, peek().getLexema());
         expect(";", child);
         return cmd;
     }    
     private No parseWrite(No cmd) {
-        No child = cmd.getChildByName("writeln") != null ?
-            cmd.getChildByName("writeln") : cmd.getChildByName("write");
+        No child = cmd.get("writeln") != null ?
+            cmd.get("writeln") : cmd.get("write");
         expect(",", child);
-        expectClass(Set.of(4, 0), child, peek().getLexema());
+        
+        expectClass(Set.of(4, 5, 6, 0), child, peek().getLexema());
         while (accept(",", child)) {
-            expectClass(Set.of(4, 0), child, peek().getLexema());
+            expectClass(Set.of(4, 5, 6, 0), child, peek().getLexema());
         }
         expect(";", child);
         return cmd;
@@ -269,14 +344,13 @@ public class AnaliseSintatica {
     private No parseSymbolExp(No parent, String label, Set<String> symbols) {
         No node = new No(label);
         if (!symbols.contains(peek().getLexema())) return null;
-        node.addChild(new No(advance().getLexema()));
+        node.addChild(new No(advance().getLexema(), peek(-1))); // uma posição antes (operador)
         parent.addChild(node);
         return node;
     }
 
     public void printTree() {
-        pos = 0;
-        No raiz = parseS();
+        analisar();
         if (raiz != null && pos == tokens.size()) {
             raiz.print("");
         } else {
@@ -286,9 +360,8 @@ public class AnaliseSintatica {
 
     public void writeTree() {
 
-        pos = 0;
         String output = "";
-        No raiz = parseS();
+        analisar();
         if (raiz != null && pos == tokens.size()) {
             output = raiz.write("");
         }
@@ -302,13 +375,19 @@ public class AnaliseSintatica {
         }
     }
 
+    public No analisar() {
+        pos = 0;
+        parseS();
+        return this.raiz;
+    }
+
     public static void main(String[] args) {
 
         AnaliseLexica analise = new AnaliseLexica();
         InputStream in;
         String entrada = null;
         try {
-            in = new BufferedInputStream(new FileInputStream("docs/codigo_fonte_LC.txt"));
+            in = new BufferedInputStream(new FileInputStream("docs/teste.txt"));
             entrada = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             in.close();
         } catch (Exception e) {
@@ -316,13 +395,10 @@ public class AnaliseSintatica {
             e.printStackTrace();
         }
 
-
         AnaliseResult res = analise.analisar(entrada);
         AnaliseSintatica sintatica = new AnaliseSintatica(res.tokens);
-
         sintatica.writeTree();
 
     }
 
 }
-
