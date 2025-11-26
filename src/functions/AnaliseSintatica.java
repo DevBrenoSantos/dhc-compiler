@@ -18,7 +18,7 @@ public class AnaliseSintatica {
     private int pos = 0;
     private No raiz = new No("S");
     private Set<String> opAritmeticos = Set.of("+", "-", "*", "/");
-    private Set<String> opLogicos = Set.of("==", "<", ">", "<>", ">=", "<=", "not");
+    private Set<String> opLogicos = Set.of("==", "<", ">", "<>", ">=", "<=", "not", "and", "or");
     private Set<String> andOr = Set.of("and", "or");
 
     AnaliseSintatica(List<Token> tokens) {
@@ -113,7 +113,7 @@ public class AnaliseSintatica {
 
     private No parseDecl(No pai) {
         No noDecl = new No("DECL");
-        String tipo = peek().getLexema();
+
         if (parseTipo(noDecl) == null)
             if (!accept("final", noDecl)) return null; // não é uma declaração
 
@@ -123,7 +123,10 @@ public class AnaliseSintatica {
         while (accept(",", noDecl));
 
         if (accept("=", noDecl))
-            if (!acceptClass(Set.of(4, 5, 6, 0), noDecl, peek().getLexema())) return null;
+            if (chooseExp(noDecl) == null) {
+                if (!acceptClass(Set.of(4, 5, 6, 0), noDecl, peek().getLexema())) return null;
+            }
+            
 
         expect(";", noDecl);
         pai.addChild(noDecl);
@@ -147,20 +150,70 @@ public class AnaliseSintatica {
         return noAttr;
     }
     private No chooseExp(No pai) {
+        int pos = this.pos;
+        while (!peek().getLexema().equals(";")) {
+            if (opAritmeticos.contains(peek().getLexema())) {
+                this.pos = pos;
+                parseExpMath(pai);
+                return pai;
+            }
+            else if (opLogicos.contains(peek().getLexema())) {
+                this.pos = pos;
+                parseExpLogica(pai);
+                return pai;
+            }
+            advance();
+        }
+        this.pos = pos;
+        return null;
+    }
 
-        advance();
-        if (opAritmeticos.contains(peek().getLexema())) {
-            pos--;
-            parseExpMath(pai);
-            return pai;
+    private No parseExpMath(No pai) {
+        No expMath = new No("EXPA");
+        if (EXPA_SUM(expMath) == null) return null;
+
+        pai.addChild(expMath);
+        return expMath;
+    }
+    private No EXPA_SUM(No pai) {
+        if (EXPA_TERM(pai) == null) return null;
+
+        while (parseSymbolExp(pai, "OPMATH", Set.of("+", "-")) != null) {
+            expectNo(EXPA_TERM(pai));
         }
-        else pos--;
-        
-        if (parseExpLogica(pai) == null) {
-            return null;
-        }
+
         return pai;
     }
+    private No EXPA_TERM(No pai) {
+        if (EXPA_UNARY(pai) == null) return null;
+
+        while (parseSymbolExp(pai, "OPMATH", Set.of("*", "/")) != null) {
+            expectNo(EXPA_UNARY(pai));
+        }
+
+        return pai;
+    }
+    private No EXPA_UNARY(No pai) {
+        if (accept("+", pai) || accept("-", pai)) {
+            expectNo(EXPA_NUMBER(pai));
+            return pai;
+        }
+        return EXPA_NUMBER(pai);
+    }
+    private No EXPA_NUMBER(No pai) {
+        if (acceptClass(Set.of(4, 5, 6, 0), pai, peek().getLexema())) {
+            return pai;
+        }
+        else if (accept("(", pai)) {
+            expectNo(parseExpMath(pai));
+            expect(")", pai);
+            return pai;
+        }
+        return null;
+    }
+
+
+
     private No parseExpLogica(No pai) { // (id | const) OPLOG (id | const) [ANDOR EXPL]*
         No expl = new No("EXPL");
         if (EXPL_OR(expl) == null) {
@@ -244,24 +297,7 @@ public class AnaliseSintatica {
 
         return pai;
     }
-    private No parseExpMath(No pai) {
-        No expMath = new No("EXPA");
-        accept("(", expMath);
-        expectClass(Set.of(4, 5, 6, 0), expMath, peek().getLexema());
 
-        if (parseSymbolExp(expMath, "OPMATH", opAritmeticos) == null) {
-            pos--;
-            return null;
-        };
-
-        do {
-            expectClass(Set.of(4, 5, 6, 0), expMath, peek().getLexema());
-        } while ((parseSymbolExp(expMath, "OPMATH", opAritmeticos)) != null);
-        accept(")", expMath);
-
-        pai.addChild(expMath);
-        return expMath;
-    }
     private No parseLinhaNula(No pai) {
         No linhaNula = new No("NULO");
         if (!accept(";", linhaNula)) return null; // não é uma linha nula
@@ -387,7 +423,7 @@ public class AnaliseSintatica {
         InputStream in;
         String entrada = null;
         try {
-            in = new BufferedInputStream(new FileInputStream("docs/teste.txt"));
+            in = new BufferedInputStream(new FileInputStream("docs/teste2.txt"));
             entrada = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             in.close();
         } catch (Exception e) {

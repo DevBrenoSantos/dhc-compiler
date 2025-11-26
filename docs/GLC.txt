@@ -10,6 +10,13 @@ ATTR -> id = (id | const); 										// Tópico 4
 
 EXPA -> (id | const) (OPMATH (id | const))+;     				// lembrar da possibilidade de parênteses no inicio e no fim da Expressão aritmética e lógica 
 
+EXPA -> SUM;
+
+EXPA_SUM -> TERM [ (+ | -) TERM ]*
+EXPA_TERM -> UNARY [ ("*" | "/") UNARY ]*;
+EXPA_UNARY -> ["+" | "-"] NUMBER;
+NUMBER -> id | const | "(" EXPA ")";
+
 EXPL -> EXPL_OR
 	EXPL_LOG -> (EXPA | const | id) OPLOG (EXPA | const | id)	
 	BOOL_VALUE -> EXPL_LOG | id | const | "(" EXPL ")"	

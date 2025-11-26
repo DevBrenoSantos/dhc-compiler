@@ -1,0 +1,8 @@
+int sum = a + b + c + d + e;
+int prod = a * b * c * d;
+int res = a + b * c - d / e + f * (g - h);
+int val = (((a + b) * (c - d)) / (e + f)) - g;
+int k = x - y + z * (p / q) - (-r);
+
+begin
+end
