@@ -22,26 +22,26 @@ public class AnaliseLexica {
     {
         // Linha 0 = categoria "Literal" inseridos na tabela durante a análise
         tabelaSimbolos.put(0, new ArrayList<>(List.of(
-            new Token("true"), new Token("false"))));
+            new Token("true", "0"), new Token("false", "0"))));
 
-        // Palavras reservadas
+        // linha 1 = Palavras reservadas
         tabelaSimbolos.put(1, new ArrayList<>(List.of( 
-        new Token("if"), new Token("return"), new Token("else"), new Token("and"),
-        new Token("not"), new Token("begin"), new Token("end"), new Token("readln"),
-        new Token("write"), new Token(" writeln"), new Token("true"), new Token("false"),
-        new Token("final")
+        new Token("if", "1"), new Token("return", "1"), new Token("else", "1"), new Token("and", "1"),
+        new Token("not", "1"), new Token("begin", "1"), new Token("end", "1"), new Token("readln", "1"),
+        new Token("write", "1"), new Token(" writeln", "1"), new Token("true", "1"), new Token("false", "1"),
+        new Token("final", "1")
     )));
-        // Tipos primitivos
+        // linha 2 = Tipos primitivos
         tabelaSimbolos.put(2, new ArrayList<>(List.of( 
-        new Token("int"), new Token("float"), new Token("string"), new Token("byte"),
-        new Token("boolean")
+        new Token("int", "2"), new Token("float", "2"), new Token("string", "2"), new Token("byte", "2"),
+        new Token("boolean", "2")
     )));
-        // Símbolos especiais
+        // linha 3 = Símbolos especiais
         tabelaSimbolos.put(3, new ArrayList<>(List.of( 
-        new Token("=="), new Token("="), new Token("("), new Token(")"), new Token("<"),
-        new Token(">"), new Token("<>"), new Token(">="), new Token("<="), new Token("+"),
-        new Token("-"), new Token("*"), new Token("/"), new Token(";"), new Token(","),
-        new Token("{"), new Token("}")
+        new Token("==", "3"), new Token("=", "3"), new Token("(", "3"), new Token(")", "3"), new Token("<", "3"),
+        new Token(">", "3"), new Token("<>", "3"), new Token(">=", "3"), new Token("<=", "3"), new Token("+", "3"),
+        new Token("-", "3"), new Token("*", "3"), new Token("/", "3"), new Token(";", "3"), new Token(",", "3"),
+        new Token("{", "3"), new Token("}", "3")
     )));
         tabelaSimbolos.put(4, new ArrayList<>());
         // Literal byte
@@ -154,7 +154,7 @@ public class AnaliseLexica {
                 }
 
                 // Ignora comentários { ... }
-                if (c == '{') {
+                if (c == '{' ) {
                     int inicio = i;
                     i++; // pula o '{'
                     boolean fechado = false;
@@ -172,6 +172,32 @@ public class AnaliseLexica {
                         return AnaliseResult.error("Erro léxico: comentário não terminado na linha " + linhaNumero + " começando em coluna " + (inicio+1));
                     }
                     continue; // pula o comentário
+                }
+
+                // ignora comentários /* ... */
+                if (c == '/' && i + 1 < len && linha.charAt(i + 1) == '*'){
+                    int inicio = i;
+                    i += 2;
+                    boolean fechado = false;
+                    while (i + 1 < len){
+                        char nc = linha.charAt(i);
+                        char nc2 = linha.charAt(i + 1);
+                        if (nc =='*' && nc2 == '/'){
+                            fechado = true;
+                            i += 2; // consome o '*/'
+                            break;
+
+                        }
+                        else{
+                            i++;
+                        }
+                    }
+                    if (!fechado){
+                        return AnaliseResult.error("Erro léxico: comentário não terminado na linha " + linhaNumero + " começando em coluna " + (inicio+1));
+                    }
+                    else{
+                        continue; // pula o comentário
+                    }
                 }
 
                 // parenteses para expressões
@@ -455,12 +481,7 @@ class Token {
         this.endereco = endereco;
     }
 
-    /**
-     * Construtor simplificado que assume valores padrão para classe, tipo e endereço.
-     */
-    public Token(String lexema) {
-        this(this.id = nextid++, lexema, 0, 0, 0);
-    }
+   
 
     /**
      * Construtor usado ao carregar símbolos do arquivo, com ID já definido.
