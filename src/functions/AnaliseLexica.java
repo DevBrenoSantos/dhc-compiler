@@ -5,13 +5,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.Map.Entry;
-
 /**
  * Classe que realiza a análise léxica para a linguagem raiz definida pela tabela de símbolos.
- * <p>
  * - Entrada: String[] (cada elemento é uma linha de código).
  * - Saída: AnaliseResult com sucesso + tokens reconhecidos, ou erro + mensagem.
- * </p>
  */
 public class AnaliseLexica {
 
@@ -22,33 +19,32 @@ public class AnaliseLexica {
     {
         // Linha 0 = categoria "Literal" inseridos na tabela durante a análise
         tabelaSimbolos.put(0, new ArrayList<>(List.of(
-            new Token("true", "0"), new Token("false", "0"))));
+            new Token("true", 0), new Token("false", 0))));
 
         // linha 1 = Palavras reservadas
         tabelaSimbolos.put(1, new ArrayList<>(List.of( 
-        new Token("if", "1"), new Token("return", "1"), new Token("else", "1"), new Token("and", "1"),
-        new Token("not", "1"), new Token("begin", "1"), new Token("end", "1"), new Token("readln", "1"),
-        new Token("write", "1"), new Token(" writeln", "1"), new Token("true", "1"), new Token("false", "1"),
-        new Token("final", "1")
+        new Token("if", 1), new Token("return", 1), new Token("else", 1), new Token("and", 1),
+        new Token("not", 1), new Token("begin", 1), new Token("end", 1), new Token("readln", 1),
+        new Token("write", 1), new Token(" writeln", 1), new Token("true", 1), new Token("false", 1),
+        new Token("final", 1)
     )));
         // linha 2 = Tipos primitivos
         tabelaSimbolos.put(2, new ArrayList<>(List.of( 
-        new Token("int", "2"), new Token("float", "2"), new Token("string", "2"), new Token("byte", "2"),
-        new Token("boolean", "2")
+        new Token("int", 2), new Token("float", 2), new Token("string", 2), new Token("byte", 2),
+        new Token("boolean", 2)
     )));
         // linha 3 = Símbolos especiais
         tabelaSimbolos.put(3, new ArrayList<>(List.of( 
-        new Token("==", "3"), new Token("=", "3"), new Token("(", "3"), new Token(")", "3"), new Token("<", "3"),
-        new Token(">", "3"), new Token("<>", "3"), new Token(">=", "3"), new Token("<=", "3"), new Token("+", "3"),
-        new Token("-", "3"), new Token("*", "3"), new Token("/", "3"), new Token(";", "3"), new Token(",", "3"),
-        new Token("{", "3"), new Token("}", "3")
+        new Token("==", 3), new Token("=", 3), new Token("(", 3), new Token(")", 3), new Token("<", 3),
+        new Token(">", 3), new Token("<>", 3), new Token(">=", 3), new Token("<=", 3), new Token("+", 3),
+        new Token("-", 3), new Token("*", 3), new Token("/", 3), new Token(";", 3), new Token(",", 3),
+        new Token("{", 3), new Token("}", 3)
     )));
-        tabelaSimbolos.put(4, new ArrayList<>());
-        // Literal byte
-        tabelaSimbolos.put(5, new ArrayList<>());
-        // literal string
-        tabelaSimbolos.put(6, new ArrayList<>());
-}
+        
+        tabelaSimbolos.put(4, new ArrayList<>()); // Identificadores
+        tabelaSimbolos.put(5, new ArrayList<>()); // Literal byte
+        tabelaSimbolos.put(6, new ArrayList<>()); // literal string
+    }
 
     /**
      * Conjunto de símbolos especiais (Strings). Inicializado a partir da tabelaSimbolos
@@ -143,7 +139,6 @@ public class AnaliseLexica {
 
             int i = 0;
             int len = linha.length();
-
             while (i < len) {
                 char c = linha.charAt(i);
 
@@ -206,7 +201,7 @@ public class AnaliseLexica {
                     boolean fechado;
                     int inicio = i;
                     i++; // pula o '('
-                    tokensReconhecidos.add(new Token("(", "Símbolo Especial"));
+                    tokensReconhecidos.add(new Token("(", 3));
                     fechado = false;
                     int pos = i;
                     while (i < len) {
@@ -254,7 +249,7 @@ public class AnaliseLexica {
                         return AnaliseResult.error("Erro léxico: literal não terminado na linha " + linhaNumero + " começando em coluna " + (inicio+1));
                     }
                     String lexema = "\"" + sb.toString() + "\"";
-                    tokensReconhecidos.add(new Token(lexema, "Literal String"));
+                    tokensReconhecidos.add(new Token("string", lexema, 6));
                     continue;
                 }
 
@@ -286,7 +281,7 @@ public class AnaliseLexica {
                         if (hexPart.length() == 2 && hexPart.matches("[0-9A-F]{2}")) {
                             int valorDecimal = Integer.parseInt(hexPart, 16);
                             if (valorDecimal <= 255) {
-                                tokensReconhecidos.add(new Token("0h" + hexPart, "Literal Byte"));
+                                tokensReconhecidos.add(new Token("byte", "0h" + hexPart, 5));
                                 i += 4;
                                 continue;
                             } else {
@@ -317,17 +312,12 @@ public class AnaliseLexica {
                     String lexema = sb.toString();
                     if (!temPonto) {
                         try {
-                            int valor = Integer.parseInt(lexema);
-                            if (valor >= 0 && valor <= 255) {
-                                tokensReconhecidos.add(new Token(lexema, "Literal Byte"));
-                            } else {
-                                tokensReconhecidos.add(new Token(lexema, "Literal Byte")); // int
-                            }
+                            tokensReconhecidos.add(new Token("int", lexema, 5)); // int
                         } catch (NumberFormatException e) {
                             return AnaliseResult.error("Número decimal inválido na linha " + linhaNumero + " coluna " + (inicio + 1));
                         }
                     } else {
-                        tokensReconhecidos.add(new Token(lexema, "Literal Byte")); // float
+                        return AnaliseResult.error("Compilador não suporta float.");
                     }
                     continue;
                 }
@@ -348,12 +338,11 @@ public class AnaliseLexica {
 
                     Integer categoria = getKeyByValue(lexema);
                     if (categoria != null) {
-                        String nomeCat = getCategoriaNome(categoria);
-                        tokensReconhecidos.add(new Token(lexema, nomeCat));
+                        tokensReconhecidos.add(new Token(lexema, categoria));
             
                     } else {
-                        tokensReconhecidos.add(new Token(lexema, "Identificador"));
-                        tabelaSimbolos.get(4).add(new Token(lexema, "Identificador")); 
+                        tokensReconhecidos.add(new Token(lexema, 4));
+                        tabelaSimbolos.get(4).add(new Token(lexema, 4)); 
                     }
                     continue;
                 }
@@ -374,10 +363,10 @@ public class AnaliseLexica {
     private Token criarTokenClassificado(String lexema) {
         Integer categoria = getKeyByValue(lexema);
         if (categoria != null) {
-            return new Token(lexema, getCategoriaNome(categoria));
+            return new Token(lexema, categoria);
         } else {
             // Para segurança, quando chamamos para símbolos conhecidos, deveríamos sempre achar a categoria.
-            return new Token(lexema, "Símbolo Especial");
+            return new Token(lexema, 3);
         }
     }
 
@@ -436,87 +425,10 @@ public class AnaliseLexica {
         } else {
             System.out.println("Tokens reconhecidos:");
             for (Token t : res.tokens) {
-                System.out.println("  [" + t.getLexema() + "] -> " + t.getClasse());
+                System.out.println("  [" + t.getLexema() + "] -> " + t.getClasseId());
             }
         }
     }
 
 }
 
-/**
- * Representa um símbolo na tabela de símbolos de um compilador.
- * Cada símbolo possui um identificador único, um lexema (nome), e atributos como classe, tipo e endereço.
- */
-class Token {
-
-    // Contador estático para gerar IDs únicos automaticamente
-    private static int nextid = 0;
-
-    // Atributos imutáveis do símbolo
-    private final int id;         // Identificador único do símbolo
-    private final String lexema;  // Nome ou representação textual do símbolo
-    private final int classe;     // Classe sintática (ex: identificador, palavra reservada), também pode ser usado para categoria
-    private int tipo;       // Tipo de dado (ex: inteiro, string, byte)
-    private int endereco;   // Endereço de memória ou posição na tabela
-    /**
-     * Construtor completo que gera ID automaticamente.
-     */
-    public Token(String lexema, int classe, int tipo, int endereco) {
-        this.id = nextid++; // Gera ID único
-        this.lexema = lexema;
-        this.classe = classe;
-        this.tipo = tipo;
-        this.endereco = endereco;
-    }
-
-    /**
-     * Construtor que define a classe com base na categoria textual.
-     */
-    public Token(String lexema, String categoria, int tipo, int endereco) {
-        this.id = nextid++; // Gera ID único
-        this.lexema = lexema;
-        this.classe = categoria.equals("Palavra Reservada") ? 1 : categoria.equals("Tipo Primitivo") ? 2 : categoria.equals("Símbolo Especial") ? 3 : categoria.equals("Identificador") ? 4 :
-        categoria.equals("Literal Byte") ? 5 : categoria.equals("Literal String") ? 6 : 0;
-        this.tipo = tipo;
-        this.endereco = endereco;
-    }
-
-   
-
-    /**
-     * Construtor usado ao carregar símbolos do arquivo, com ID já definido.
-     */
-    public Token(int id, String lexema, int classe, int tipo, int endereco) {
-        this.id = id;
-        this.lexema = lexema;
-        this.classe = classe;
-        this.tipo = tipo;
-        this.endereco = endereco;
-    }
-
-    public Token(String lexema, String classe) {
-        this.id = nextid++;
-        this.lexema = lexema;
-        this.classe = classe.equals("Palavra Reservada") ? 1 : classe.equals("Tipo Primitivo") ? 2 : classe.equals("Símbolo Especial") ? 3 : classe.equals("Identificador") ? 4 : 
-        classe.equals("Literal Byte") ? 5 : classe.equals("Literal String") ? 6 : 0;
-          
-    }
-
-    // Métodos de acesso (getters)
-    public int getId() { return id; }
-    public String getLexema() { return lexema; }
-    public int getClasse() { return classe; }
-    public int getTipo() { return tipo; }
-    public int getEndereco() { return endereco; }
-
-}
-
-enum TokenType {
-    IDENTIFIER,
-    KEYWORD,
-    TYPE,
-    SYMBOL,
-    LITERAL,
-    LITERAL_STRING,
-    LITERAL_INT,
-}
