@@ -117,16 +117,17 @@ public class AnaliseSintatica {
         if (parseTipo(noDecl) == null)
             if (!accept("final", noDecl)) return null; // não é uma declaração
 
+        
         do {
             expectClass(Set.of(4), noDecl, peek().getLexema());
+            if (accept("=", noDecl)) {
+                if (chooseExp(noDecl) == null) {
+                    expectClass(Set.of(4, 5, 6, 0), noDecl, peek().getLexema());
+                }
+                else break;
+            }
         }
         while (accept(",", noDecl));
-
-        if (accept("=", noDecl))
-            if (chooseExp(noDecl) == null) {
-                if (!acceptClass(Set.of(4, 5, 6, 0), noDecl, peek().getLexema())) return null;
-            }
-            
 
         expect(";", noDecl);
         pai.addChild(noDecl);
@@ -143,36 +144,65 @@ public class AnaliseSintatica {
         }
 
         expect("=", noAttr);
-        if (chooseExp(noAttr) == null) noAttr.addChild(new No(peek().getLexema(), peek())); // test
+        if (chooseExp(noAttr) == null) { // test
+            noAttr.addChild(new No(peek().getLexema(), peek())); // test
+            advance();
+        }
         expect(";", noAttr);
 
         pai.addChild(noAttr);
         return noAttr;
     }
     private No chooseExp(No pai) {
+        if (isExp(pai, "MATH")) {
+            return parseExpMath(pai);
+        }
+        else if (isExp(pai, "LOGIC")) {
+            return parseExpLogica(pai);
+        }
+        return null;
+    }
+    private boolean isExp(No pai, String expType) {
         int pos = this.pos;
         while (!peek().getLexema().equals(";")) {
             if (opAritmeticos.contains(peek().getLexema())) {
-                this.pos = pos;
-                parseExpMath(pai);
-                return pai;
+                if (expType.equals("MATH")) {
+                    this.pos = pos;
+                    return true;
+                }
+                else break;
             }
             else if (opLogicos.contains(peek().getLexema())) {
-                this.pos = pos;
-                parseExpLogica(pai);
-                return pai;
+                if (expType.equals("LOGIC")) {
+                    this.pos = pos;
+                    return true;
+                }
+                else break;
             }
             advance();
         }
         this.pos = pos;
-        return null;
+        return false;
     }
 
     private No parseExpMath(No pai) {
-        No expMath = new No("EXPA");
+
+        if (!isExp(pai, "MATH")) return null;
+        No expMath = pai;
+        while (expMath != null) { // não repetir desnecessariamente EXPA para recursão
+            if (expMath.name.equals("EXPA")) {
+                break;
+            }
+            expMath = expMath.getParent(); // null
+        }
+        if (expMath == null) {
+            expMath = new No("EXPA");
+            pai.addChild(expMath);
+        }
         if (EXPA_SUM(expMath) == null) return null;
 
-        pai.addChild(expMath);
+
+        
         return expMath;
     }
     private No EXPA_SUM(No pai) {
@@ -201,7 +231,11 @@ public class AnaliseSintatica {
         return EXPA_NUMBER(pai);
     }
     private No EXPA_NUMBER(No pai) {
-        if (acceptClass(Set.of(4, 5, 6, 0), pai, peek().getLexema())) {
+        if (acceptClass(Set.of(5, 6, 0), pai, peek().getLexema())) {
+            return pai;
+        }
+        if (peek().getClasse() == 4) { // identificador
+            parseId(pai);  // cria o nó id e avança o token
             return pai;
         }
         else if (accept("(", pai)) {
@@ -214,15 +248,16 @@ public class AnaliseSintatica {
 
 
 
-    private No parseExpLogica(No pai) { // (id | const) OPLOG (id | const) [ANDOR EXPL]*
-        No expl = new No("EXPL");
-        if (EXPL_OR(expl) == null) {
-            return null;
-        }
+private No parseExpLogica(No pai) {
 
-        pai.addChild(expl);
-        return expl;
-    }
+    No expl = new No("EXPL");
+    pai.addChild(expl);
+
+    if (EXPL_REL(expl) == null)
+        return null;
+
+    return expl;
+}
 
     private No EXPL_OR(No pai) {
         if (EXPL_AND(pai) == null) return null;
@@ -245,58 +280,158 @@ public class AnaliseSintatica {
         return pai;
     }
 
-    private No EXPL_NOT(No pai) {
-        if (accept("not", pai)) {
-            expect("(", pai);
-            expectNo(BOOL_VALUE(pai));
-            expect(")", pai);
-        } else {
-            if (BOOL_VALUE(pai) == null) return null;
-        }
+private No EXPL_NOT(No pai) {
 
-
+    if (accept("not", pai)) {
+        expectNo(EXPL_NOT(pai));
         return pai;
     }
 
-    private No BOOL_VALUE(No pai) {
-/*         if (accept("(", pai)) {
-            expectNo(parseExpLogica(pai));
-            expect(")", pai);
-            return pai;
-        } */
+    return EXPL_TERM(pai);
+}
 
-            if (EXPL_REL(pai) != null) return pai;
-            else if (acceptClass(Set.of(4, 5, 6, 0), pai, peek().getLexema()))
-                return pai;
+private No EXPL_TERM(No pai) {
 
+    // ( EXPL )
+    if (accept("(", pai)) {
+        expectNo(EXPL_REL(pai));
+        expect(")", pai);
+        return pai;
+    }
 
+    // arithmetic expression: EXPA
+    int posBackup = pos;
+    if (parseExpMath(pai) != null) {
+        return pai;
+    }
+    pos = posBackup;
 
+    // id or literal
+    if (acceptClass(Set.of(0,5,6), pai, peek().getLexema())) {
+        return pai;
+    }
+    if (peek().getClasse() == 4) { // identificador
+        parseId(pai);  // cria o nó id e avança o token
+        return pai;
+    }
+    return null;
+}
+private No EXPL_REL(No pai) {
+
+    if (EXPL_OR(pai) == null)
         return null;
-    }
-    private No EXPL_REL(No pai) {
-        if (parseExpMath(pai) == null) {
-            if (!acceptClass(Set.of(4, 5, 6, 0), pai, peek().getLexema())) 
-                return null;
-        }
 
-        if (parseSymbolExp(pai, "OPLOG", opLogicos) != null) {
-            if (parseExpMath(pai) == null) {
-                if (!acceptClass(Set.of(4, 5, 6, 0), pai, peek().getLexema())) {
-                    pai.children = new ArrayList<>(); 
-                    pos--;
-                    return null;
-                }
+    while (parseSymbolExp(pai, "OPLOG", opLogicos) != null) {
+        expectNo(EXPL_OR(pai));
+    }
+
+    return pai;
+}
+
+
+
+private static int prec(No no) {
+    if (no == null) return Integer.MIN_VALUE;
+    String name = no.name != null ? no.name : "";
+    String val = (no.token != null && no.token.getLexema() != null) ? no.token.getLexema() : "";
+
+    // Folhas (ids, consts) -> máxima precedência para evitar parênteses
+    if (no.children == null || no.children.isEmpty()) return 100;
+
+    // Operadores armazenados em nós específicos
+    switch (name) {
+        case "NOT": return 90;
+        case "OPMATH":
+            // operador aritmético está no filho 0
+            if (!no.children.isEmpty()) {
+                String op = no.children.get(0).token.getLexema();
+                if ("*".equals(op) || "/".equals(op)) return 80;
+                if ("+".equals(op) || "-".equals(op)) return 60;
             }
-        }
-        else {
-            pai.children.remove(pai.children.size() - 1); // remove variavel do primeiro acceptClass
-            pos--; return null;
-        }
-
-
-
-        return pai;
+            return 60;
+        case "EXPA":
+            // EXPA é composto por termos e OPMATH; decidir pela menor precedência dos operadores visíveis
+            // Retorna 60 para somas por padrão (funciona como nó genérico)
+            return 60;
+        case "OPLOG":
+            return 40;
+        case "EXPL_REL":
+            return 40;
+        case "AND":
+        case "and":
+            return 30;
+        case "OR":
+        case "or":
+            return 20;
+        case "EXPL":
+            return 25; // entre relacional e and/or (ajuste se desejar)
+        default:
+            return 100;
     }
+}
+
+private static String toExpr(No no, No parent) {
+    if (no == null) return "";
+
+    // Folha terminal (id, número, literal, parêntese token individual etc.)
+    if (no.children == null || no.children.isEmpty()) {
+        return no.token != null ? no.token.getLexema() : no.name;
+    }
+
+    List<No> f = no.children;
+
+    // Detectar padrão de parênteses: primeiro filho '(' e último filho ')'
+    if (f.size() >= 3 &&
+        f.get(0).token != null && "(".equals(f.get(0).token.getLexema()) &&
+        f.get(f.size()-1).token != null && ")".equals(f.get(f.size()-1).token.getLexema()) &&
+        f.size() == 3) {
+        // caso comum: '(' EXPR ')'
+        return "(" + toExpr(f.get(1), no) + ")";
+    }
+
+    StringBuilder sb = new StringBuilder();
+    boolean first = true;
+
+    // Percorre filhos em ordem; se for nó operador (OPMATH/OPLOG) extrai o token do seu filho[0]
+    for (No child : f) {
+
+        String part;
+
+        if (child.name != null && (child.name.equals("OPMATH") || child.name.equals("OPLOG"))) {
+            // operador real está em child.children.get(0)
+            if (child.children != null && !child.children.isEmpty() && child.children.get(0).token != null) {
+                part = child.children.get(0).token.getLexema();
+            } else {
+                part = ""; // fallback
+            }
+        } else if (child.children != null && child.children.isEmpty()) {
+            // token terminal
+            part = child.token != null ? child.token.getLexema() : child.name;
+        } else {
+            // recursão normal (subexpressão)
+            part = toExpr(child, no);
+        }
+
+        if (part == null) part = "";
+
+        if (!first) sb.append(" ");
+        sb.append(part);
+        first = false;
+    }
+
+    String expr = sb.toString().trim();
+
+    // aplicar parênteses se necessário (baseado em precedência)
+    if (parent != null && prec(no) < prec(parent)) {
+        return "(" + expr + ")";
+    }
+    return expr;
+}
+
+
+public static String reconstruir(No no) {
+    return toExpr(no, null);
+}
 
     private No parseLinhaNula(No pai) {
         No linhaNula = new No("NULO");
