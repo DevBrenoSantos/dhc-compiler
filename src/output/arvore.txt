@@ -2,143 +2,69 @@ S
   DECL
     TYPE
       int
-    sum
-    =
-    EXPA
-      a
-      OPMATH
-        +
-      b
-      OPMATH
-        +
-      c
-      OPMATH
-        +
-      d
-      OPMATH
-        +
-      e
+    n
     ;
   DECL
     TYPE
-      int
-    prod
-    =
-    EXPA
-      a
-      OPMATH
-        *
-      b
-      OPMATH
-        *
-      c
-      OPMATH
-        *
-      d
+      string
+    nome
     ;
   DECL
     TYPE
-      int
-    res
-    =
-    EXPA
-      a
-      OPMATH
-        +
-      b
-      OPMATH
-        *
-      c
-      OPMATH
-        -
-      d
-      OPMATH
-        /
-      e
-      OPMATH
-        +
-      f
-      OPMATH
-        *
-      (
-      EXPA
-        g
-        OPMATH
-          -
-        h
-      )
+      boolean
+    naoTerminou
     ;
   DECL
-    TYPE
-      int
-    val
+    final
+    MAXITER
     =
-    EXPA
-      (
-      EXPA
-        (
-        EXPA
-          (
-          EXPA
-            a
-            OPMATH
-              +
-            b
-          )
-          OPMATH
-            *
-          (
-          EXPA
-            c
-            OPMATH
-              -
-            d
-          )
-        )
-        OPMATH
-          /
-        (
-        EXPA
-          e
-          OPMATH
-            +
-          f
-        )
-      )
-      OPMATH
-        -
-      g
-    ;
-  DECL
-    TYPE
-      int
-    k
-    =
-    EXPA
-      x
-      OPMATH
-        -
-      y
-      OPMATH
-        +
-      z
-      OPMATH
-        *
-      (
-      EXPA
-        p
-        OPMATH
-          /
-        q
-      )
-      OPMATH
-        -
-      (
-      EXPA
-        -
-        r
-      )
+    10
     ;
   BLOCO
     begin
+      CMD
+        write
+          ,
+          "Digite seu nome: "
+          ;
+        readln
+          ,
+          nome
+          ;
+        ATTR
+          id
+            naoTerminou
+          =
+          true
+          ;
+        ATTR
+          id
+            n
+          =
+          0
+          ;
+        while
+          EXPL naoTerminou
+          BLOCO
+            begin
+              CMD
+                writeln
+                  ,
+                  "Ola' "
+                  ,
+                  nome
+                  ;
+                ATTR
+                  id
+                    n
+                  =
+                  EXPA n + 1
+                  ;
+                ATTR
+                  id
+                    naoTerminou
+                  =
+                  EXPL n < MAXITER (or) ( n + MAXITER ) >= MAXITER
+                  ;
+            end
     end

@@ -81,12 +81,22 @@ public class No {
 
     String write(String prefix) {
         StringBuilder sb = new StringBuilder();
+            // Se for EXPL ou EXPA → reconstruir expressão
+        if (name.equals("EXPL") || name.equals("EXPA")) {
+            
+            sb.append(prefix)
+            .append((token != null ? token.getLexema() : name) + " ")
+            .append(AnaliseSintatica.reconstruir(this))
+            .append("\n");
+            return sb.toString();
+        }
+
         sb.append(prefix)
         .append(token != null ? token.getLexema() : name)
         .append("\n");
-        for (No child : children)
+        for (No child : children) {
             sb.append(child.write(prefix + "  "));
-
+        }
         return sb.toString();
     }
 }

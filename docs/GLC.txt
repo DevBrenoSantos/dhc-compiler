@@ -8,19 +8,17 @@ DECL -> (final | TYPE) id [= const] [,id [= const]]*;    		// Tópico 1,2 - (int
 TYPE -> int | byte | string | boolean
 ATTR -> id = (id | const); 										// Tópico 4
 
-EXPA -> (id | const) (OPMATH (id | const))+;     				// lembrar da possibilidade de parênteses no inicio e no fim da Expressão aritmética e lógica 
 
-EXPA -> SUM;
+EXPA -> SUM								// recursão baseado na precedência
+	EXPA_SUM -> TERM [ (+ | -) TERM ]*
+	EXPA_TERM -> UNARY [ ("*" | "/") UNARY ]*;
+	EXPA_UNARY -> ["+" | "-"] NUMBER;
+	NUMBER -> id | const | "(" EXPA ")";
 
-EXPA_SUM -> TERM [ (+ | -) TERM ]*
-EXPA_TERM -> UNARY [ ("*" | "/") UNARY ]*;
-EXPA_UNARY -> ["+" | "-"] NUMBER;
-NUMBER -> id | const | "(" EXPA ")";
-
-EXPL -> EXPL_OR
-	EXPL_LOG -> (EXPA | const | id) OPLOG (EXPA | const | id)	
-	BOOL_VALUE -> EXPL_LOG | id | const | "(" EXPL ")"	
-	EXPL_NOT -> [not] "(" BOOL_VALUE ")"
+EXPL -> EXPL_OR 						// recursão baseado na precedência
+	EXPL_REL -> (EXPA | const | id) OPLOG (EXPA | const | id) | "(" EXPL ")"
+	BOOL_VALUE -> EXPL_REL | id | const | "(" EXPL ")" | "(" EXPA ")"	
+	EXPL_NOT -> [not] BOOL_VALUE
 	EXPL_AND -> EXPL_NOT [and EXPL_NOT]*
 	EXPL_OR -> EXPL_AND [or EXPL_AND]*		
 
@@ -42,8 +40,3 @@ CMD -> (
 *se 'true' e 'false' são considerados const, EXPL sempre produz uma const
 *espera-se que EXPL e EXPA sempre produzem uma const
 *logo, DECLs e ATTRs podem aceitar expressões
-
-Duvidas para o professor: 
-- Oque é "<>" ?? --> isso é igual a != no java 
-- Como podemos colocar os "()" em regras da linguagem ??
-- Como posso incluir a possibilidade de uma lista de valores --> incluida na regra do tópico 1,2

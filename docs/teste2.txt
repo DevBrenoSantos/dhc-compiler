@@ -1,8 +1,17 @@
-int sum = a + b + c + d + e;
-int prod = a * b * c * d;
-int res = a + b * c - d / e + f * (g - h);
-int val = (((a + b) * (c - d)) / (e + f)) - g;
-int k = x - y + z * (p / q) - (-r);
-
+{ Exemplo de Programa na linguagem LC }
+int n;
+string nome;
+boolean naoTerminou;
+final MAXITER=10;
+{ Bloco Principal }
 begin
+    write, "Digite seu nome: ";
+    readln, nome;
+    naoTerminou=true;
+    n=0;
+    while naoTerminou begin
+        writeln,"Ola' ", nome;
+        n=n+1;
+        naoTerminou=n < MAXITER or (n + MAXITER) >= MAXITER;
+    end
 end
