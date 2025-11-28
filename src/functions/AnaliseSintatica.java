@@ -7,7 +7,6 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import functions.AnaliseLexica.AnaliseResult;
@@ -19,7 +18,6 @@ public class AnaliseSintatica {
     private No raiz = new No("S");
     private Set<String> opAritmeticos = Set.of("+", "-", "*", "/");
     private Set<String> opLogicos = Set.of("==", "<", ">", "<>", ">=", "<=", "not", "and", "or");
-    private Set<String> andOr = Set.of("and", "or");
 
     AnaliseSintatica(List<Token> tokens) {
         this.tokens = tokens;
@@ -46,18 +44,12 @@ public class AnaliseSintatica {
         }
         return false;
     }
+
     private boolean acceptClass(Set<Integer> classes, No parent, String label) {
         Token tk = peek();
-        if (tk != null && classes.contains(tk.getClasse())) {
+        if (tk != null && classes.contains(tk.getClasseId())) {
             parent.addChild(new No(label, tk));
             advance();
-            return true;
-        }
-        return false;
-    }
-    private boolean acceptNo(No expected, No parent) {
-        if (expected != null) {
-            parent.addChild(expected);
             return true;
         }
         return false;
@@ -76,14 +68,17 @@ public class AnaliseSintatica {
             reportError("Expected node not found");
             return;
         }
-        //parent.add(expected);
     }
+    // accept é opcional , expect é obrigatório
     
     private void reportError(String message) throws RuntimeException {
         throw new RuntimeException("Syntax Error at position " + pos + ": " + message);
     }
 
-    // ÁRVORE SINTÁTICA ABSTRATA
+
+
+
+    // ============ ÁRVORE SINTÁTICA ABSTRATA ==============
 
     private No parseS() {
         while (peek() != null) {
@@ -98,7 +93,7 @@ public class AnaliseSintatica {
     private No parseTipo(No pai) {
         No noTipo = new No("TYPE");
         String type = peek().getLexema();
-        if (!acceptClass(Set.of(2), noTipo, type)) return null;
+        if (!acceptClass(Set.of(2), noTipo, type)) return null; // 2 -> tipo primitivo
         pai.addChild(noTipo);
         return noTipo;
     }
@@ -106,7 +101,7 @@ public class AnaliseSintatica {
     private No parseId(No pai) {
         No noId = new No("id");
         String id = peek().getLexema();
-        if (!acceptClass(Set.of(4), noId, id)) return null;
+        if (!acceptClass(Set.of(4), noId, id)) return null; // 4-> id
         pai.addChild(noId);
         return pai;
     }
@@ -116,13 +111,13 @@ public class AnaliseSintatica {
 
         if (parseTipo(noDecl) == null)
             if (!accept("final", noDecl)) return null; // não é uma declaração
-
         
         do {
             expectClass(Set.of(4), noDecl, peek().getLexema());
             if (accept("=", noDecl)) {
                 if (chooseExp(noDecl) == null) {
-                    expectClass(Set.of(4, 5, 6, 0), noDecl, peek().getLexema());
+                    expectClass(Set.of(4, 5, 6, 0), noDecl, peek().getLexema()); 
+                    // 0 -> literal ou boolean, 4 -> id, 5 -> inteiro, 6 -> string
                 }
                 else break;
             }
@@ -144,8 +139,8 @@ public class AnaliseSintatica {
         }
 
         expect("=", noAttr);
-        if (chooseExp(noAttr) == null) { // test
-            noAttr.addChild(new No(peek().getLexema(), peek())); // test
+        if (chooseExp(noAttr) == null) {
+            noAttr.addChild(new No(peek().getLexema(), peek()));
             advance();
         }
         expect(";", noAttr);
@@ -185,6 +180,9 @@ public class AnaliseSintatica {
         return false;
     }
 
+
+    // ============ EXPRESSÃO ARITMÉTICA ==============
+
     private No parseExpMath(No pai) {
 
         if (!isExp(pai, "MATH")) return null;
@@ -193,7 +191,7 @@ public class AnaliseSintatica {
             if (expMath.name.equals("EXPA")) {
                 break;
             }
-            expMath = expMath.getParent(); // null
+            expMath = expMath.getParent();
         }
         if (expMath == null) {
             expMath = new No("EXPA");
@@ -205,13 +203,14 @@ public class AnaliseSintatica {
         
         return expMath;
     }
-    private No EXPA_SUM(No pai) {
+
+    // === PRECEDÊNCIAS (menor para maior) ===
+    private No EXPA_SUM(No pai) { // menor precedência
         if (EXPA_TERM(pai) == null) return null;
 
         while (parseSymbolExp(pai, "OPMATH", Set.of("+", "-")) != null) {
             expectNo(EXPA_TERM(pai));
         }
-
         return pai;
     }
     private No EXPA_TERM(No pai) {
@@ -220,7 +219,6 @@ public class AnaliseSintatica {
         while (parseSymbolExp(pai, "OPMATH", Set.of("*", "/")) != null) {
             expectNo(EXPA_UNARY(pai));
         }
-
         return pai;
     }
     private No EXPA_UNARY(No pai) {
@@ -234,11 +232,11 @@ public class AnaliseSintatica {
         if (acceptClass(Set.of(5, 6, 0), pai, peek().getLexema())) {
             return pai;
         }
-        if (peek().getClasse() == 4) { // identificador
-            parseId(pai);  // cria o nó id e avança o token
+        if (peek().getClasseId() == 4) { // identificador
+            parseId(pai);
             return pai;
         }
-        else if (accept("(", pai)) {
+        else if (accept("(", pai)) { // parênteses têm a maior precedência
             expectNo(parseExpMath(pai));
             expect(")", pai);
             return pai;
@@ -247,18 +245,29 @@ public class AnaliseSintatica {
     }
 
 
+    // ============ EXPRESSÃO LÓGICA ==============
 
-private No parseExpLogica(No pai) {
+    private No parseExpLogica(No pai) {
 
-    No expl = new No("EXPL");
-    pai.addChild(expl);
+        No expl = new No("EXPL");
+        pai.addChild(expl);
 
-    if (EXPL_REL(expl) == null)
-        return null;
+        if (EXPL_REL(expl) == null)
+            return null;
 
-    return expl;
-}
+        return expl;
+    }
+    private No EXPL_REL(No pai) {
 
+        if (EXPL_OR(pai) == null)
+            return null;
+
+        while (parseSymbolExp(pai, "OPLOG", opLogicos) != null) {
+            expectNo(EXPL_OR(pai));
+        }
+
+        return pai;
+    }
     private No EXPL_OR(No pai) {
         if (EXPL_AND(pai) == null) return null;
 
@@ -271,167 +280,41 @@ private No parseExpLogica(No pai) {
 
     private No EXPL_AND(No pai) {
         if (EXPL_NOT(pai) == null) return null;
-
         while (parseSymbolExp(pai, "AND", Set.of("and")) != null) {
             expectNo(EXPL_NOT(pai));
         }
-
-
         return pai;
     }
 
-private No EXPL_NOT(No pai) {
-
-    if (accept("not", pai)) {
-        expectNo(EXPL_NOT(pai));
-        return pai;
-    }
-
-    return EXPL_TERM(pai);
-}
-
-private No EXPL_TERM(No pai) {
-
-    // ( EXPL )
-    if (accept("(", pai)) {
-        expectNo(EXPL_REL(pai));
-        expect(")", pai);
-        return pai;
-    }
-
-    // arithmetic expression: EXPA
-    int posBackup = pos;
-    if (parseExpMath(pai) != null) {
-        return pai;
-    }
-    pos = posBackup;
-
-    // id or literal
-    if (acceptClass(Set.of(0,5,6), pai, peek().getLexema())) {
-        return pai;
-    }
-    if (peek().getClasse() == 4) { // identificador
-        parseId(pai);  // cria o nó id e avança o token
-        return pai;
-    }
-    return null;
-}
-private No EXPL_REL(No pai) {
-
-    if (EXPL_OR(pai) == null)
-        return null;
-
-    while (parseSymbolExp(pai, "OPLOG", opLogicos) != null) {
-        expectNo(EXPL_OR(pai));
-    }
-
-    return pai;
-}
-
-
-
-private static int prec(No no) {
-    if (no == null) return Integer.MIN_VALUE;
-    String name = no.name != null ? no.name : "";
-    String val = (no.token != null && no.token.getLexema() != null) ? no.token.getLexema() : "";
-
-    // Folhas (ids, consts) -> máxima precedência para evitar parênteses
-    if (no.children == null || no.children.isEmpty()) return 100;
-
-    // Operadores armazenados em nós específicos
-    switch (name) {
-        case "NOT": return 90;
-        case "OPMATH":
-            // operador aritmético está no filho 0
-            if (!no.children.isEmpty()) {
-                String op = no.children.get(0).token.getLexema();
-                if ("*".equals(op) || "/".equals(op)) return 80;
-                if ("+".equals(op) || "-".equals(op)) return 60;
-            }
-            return 60;
-        case "EXPA":
-            // EXPA é composto por termos e OPMATH; decidir pela menor precedência dos operadores visíveis
-            // Retorna 60 para somas por padrão (funciona como nó genérico)
-            return 60;
-        case "OPLOG":
-            return 40;
-        case "EXPL_REL":
-            return 40;
-        case "AND":
-        case "and":
-            return 30;
-        case "OR":
-        case "or":
-            return 20;
-        case "EXPL":
-            return 25; // entre relacional e and/or (ajuste se desejar)
-        default:
-            return 100;
-    }
-}
-
-private static String toExpr(No no, No parent) {
-    if (no == null) return "";
-
-    // Folha terminal (id, número, literal, parêntese token individual etc.)
-    if (no.children == null || no.children.isEmpty()) {
-        return no.token != null ? no.token.getLexema() : no.name;
-    }
-
-    List<No> f = no.children;
-
-    // Detectar padrão de parênteses: primeiro filho '(' e último filho ')'
-    if (f.size() >= 3 &&
-        f.get(0).token != null && "(".equals(f.get(0).token.getLexema()) &&
-        f.get(f.size()-1).token != null && ")".equals(f.get(f.size()-1).token.getLexema()) &&
-        f.size() == 3) {
-        // caso comum: '(' EXPR ')'
-        return "(" + toExpr(f.get(1), no) + ")";
-    }
-
-    StringBuilder sb = new StringBuilder();
-    boolean first = true;
-
-    // Percorre filhos em ordem; se for nó operador (OPMATH/OPLOG) extrai o token do seu filho[0]
-    for (No child : f) {
-
-        String part;
-
-        if (child.name != null && (child.name.equals("OPMATH") || child.name.equals("OPLOG"))) {
-            // operador real está em child.children.get(0)
-            if (child.children != null && !child.children.isEmpty() && child.children.get(0).token != null) {
-                part = child.children.get(0).token.getLexema();
-            } else {
-                part = ""; // fallback
-            }
-        } else if (child.children != null && child.children.isEmpty()) {
-            // token terminal
-            part = child.token != null ? child.token.getLexema() : child.name;
-        } else {
-            // recursão normal (subexpressão)
-            part = toExpr(child, no);
+    private No EXPL_NOT(No pai) {
+        if (accept("not", pai)) {
+            expectNo(EXPL_NOT(pai));
+            return pai;
         }
-
-        if (part == null) part = "";
-
-        if (!first) sb.append(" ");
-        sb.append(part);
-        first = false;
+        return EXPL_TERM(pai);
     }
 
-    String expr = sb.toString().trim();
-
-    // aplicar parênteses se necessário (baseado em precedência)
-    if (parent != null && prec(no) < prec(parent)) {
-        return "(" + expr + ")";
+    private No EXPL_TERM(No pai) {
+        if (accept("(", pai)) {
+            expectNo(EXPL_REL(pai));
+            expect(")", pai);
+            return pai;
+        }
+        int posBackup = pos; 
+        if (parseExpMath(pai) != null) {
+            return pai;
+        }
+        pos = posBackup; // se não for uma EXPA, a posição antiga é resgatada
+        if (acceptClass(Set.of(0,5,6), pai, peek().getLexema())) {
+            return pai;
+        }
+        if (peek().getClasseId() == 4) {
+            parseId(pai);
+            return pai;
+        }
+        return null;
     }
-    return expr;
-}
 
-
-public static String reconstruir(No no) {
-    return toExpr(no, null);
-}
 
     private No parseLinhaNula(No pai) {
         No linhaNula = new No("NULO");
@@ -444,22 +327,20 @@ public static String reconstruir(No no) {
     private No parseBloco(No pai) {
         No bloco = new No("BLOCO");
         if (!accept("begin", bloco)) return null; // não é um bloco
+
         if (!peek().getLexema().equals("end")) {
             No cmd = new No("CMD");
             bloco.get("begin").addChild(cmd);
-            while (!peek().getLexema().equals("end")) {
+            while (!peek().getLexema().equals("end")) { // encerra no último end
                 parseCmd(cmd);
             }
         }
-
         expect("end", bloco);
-
         pai.addChild(bloco);
         return bloco;
     }
 
     private No parseCmd(No cmd) {
-        // adicionar No para cada comando: writeln etc., e então adiciona-los para o No CMD
         if (parseAttr(cmd) != null) return cmd;
         if (parseLinhaNula(cmd) != null) return cmd;
         if (accept("while", cmd)) return parseWhile(cmd);
@@ -518,6 +399,99 @@ public static String reconstruir(No no) {
         node.addChild(new No(advance().getLexema(), peek(-1))); // uma posição antes (operador)
         parent.addChild(node);
         return node;
+    }
+
+        private static int prec(No no) { // método para visualização na arvore.txt
+        if (no == null) return 0;
+        String name = no.name != null ? no.name : "";
+
+        // precedência de 1 (menor) a 9 (maior)
+
+        // Folhas (ids, consts) -> máxima precedência para evitar parênteses
+        if (no.children == null || no.children.isEmpty()) return 9;
+
+        // Operadores armazenados em nós específicos
+        switch (name) {
+            case "NOT": return 8;
+            case "OPMATH":
+                // operador aritmético está no filho 0
+                if (!no.children.isEmpty()) {
+                    String op = no.children.get(0).token.getLexema();
+                    if ("*".equals(op) || "/".equals(op)) return 7;
+                    if ("+".equals(op) || "-".equals(op)) return 6;
+                }
+                return 6;
+            case "EXPA": return 6;
+            case "OPLOG": return 5;
+            case "EXPL_REL": return 5;
+            case "and": return 4;
+            case "or": return 2;
+            case "EXPL": return 3;
+            default: return 1;
+        }
+    }
+
+    private static String toExpr(No no, No parent) { // método para visualização na arvore.txt
+        if (no == null) return "";
+
+        // Folha terminal (id, número, literal, parêntese token individual etc.)
+        if (no.children == null || no.children.isEmpty()) {
+            return no.token != null ? no.token.getLexema() : no.name;
+        }
+
+        List<No> f = no.children;
+
+        // Detectar padrão de parênteses: primeiro filho '(' e último filho ')'
+        if (f.size() >= 3 &&
+            f.get(0).token != null && "(".equals(f.get(0).token.getLexema()) &&
+            f.get(f.size()-1).token != null && ")".equals(f.get(f.size()-1).token.getLexema()) &&
+            f.size() == 3) {
+            // caso comum: '(' EXPR ')'
+            return "(" + toExpr(f.get(1), no) + ")";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+
+        // Percorre filhos em ordem; se for nó operador (OPMATH/OPLOG) extrai o token do seu filho[0]
+        for (No child : f) {
+
+            String part;
+
+            if (child.name != null && (child.name.equals("OPMATH") || child.name.equals("OPLOG"))) {
+                // operador real está em child.children.get(0)
+                if (child.children != null && !child.children.isEmpty() && child.children.get(0).token != null) {
+                    part = child.children.get(0).token.getLexema();
+                } else {
+                    part = ""; // fallback
+                }
+            } else if (child.children != null && child.children.isEmpty()) {
+                // token terminal
+                part = child.token != null ? child.token.getLexema() : child.name;
+            } else {
+                // recursão normal (subexpressão)
+                part = toExpr(child, no);
+            }
+
+            if (part == null) part = "";
+
+            if (!first) sb.append(" ");
+            sb.append(part);
+            first = false;
+        }
+
+        String expr = sb.toString().trim();
+
+        // aplicar parênteses se necessário (baseado em precedência)
+        if (parent != null && prec(no) < prec(parent)) {
+            return "(" + expr + ")";
+        }
+        return expr;
+    }
+
+
+    public static String reconstruir(No no) { // reconstrução de uma expressão a partir do Nó
+        return toExpr(no, null);
     }
 
     public void printTree() {
