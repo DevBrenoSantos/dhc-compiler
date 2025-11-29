@@ -1,0 +1,13 @@
+int n;
+boolean naoTerminou;
+final MAXITER=10;
+begin
+    n=6+4*10;
+    n=(5+4)*5;
+    n=4;
+    naoTerminou=true;
+    naoTerminou=n < MAXITER;
+    naoTerminou=n < MAXITER and (n + MAXITER) >= MAXITER;
+    naoTerminou=not(naoTerminou);
+    naoTerminou=n < MAXITER or (n + MAXITER) >= MAXITER;
+end

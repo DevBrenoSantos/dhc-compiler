@@ -1,0 +1,6 @@
+int a = b;
+int x = 3;
+int k = (a);
+int m = ((x));
+begin
+end
