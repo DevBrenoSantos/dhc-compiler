@@ -1,0 +1,5 @@
+1. NULO (Comando Vazio)$$NULO \rightarrow ;$$$`;`$
+2. TYPE (Tipos Primitivos)$$TYPE \rightarrow int \mid byte \mid string \mid boolean$$$$(int|byte|string|boolean)$$
+3. OPMATH e OPLOG (Operadores)$$OPMATH \rightarrow + \mid - \mid * \mid /$$$$OPLOG \rightarrow == \mid < \mid > \mid <> \mid >= \mid <=$$$$ANDOR \rightarrow and \mid or$$$$(+|-|*|/)$$$$(==|<|>|<>|>=|<=)$$$$(and|or)$$
+4. ATTR (Atribuição Simples)$$ATTR \rightarrow \text{id} = (\text{id} \mid \text{const});$$$$\text{ID} = (\text{ID} | \text{CONST});$$(Usando ID e CONST como placeholders para as ERs dos tokens)
+5. DECL (Declaração de Variáveis - Foco em um segmento)Uma única declaração:$$\text{(final} | \text{TYPE)} \text{ID} [ = \text{CONST}]$$$$((final|TYPE)\s+\text{ID}(\s*=\s*\text{CONST})?)$$
