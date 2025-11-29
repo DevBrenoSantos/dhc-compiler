@@ -494,12 +494,12 @@ public class AnaliseSintatica {
         return toExpr(no, null);
     }
 
-    public void printTree() {
+    public void printTree() throws Exception {
         analisar();
         if (raiz != null && pos == tokens.size()) {
             raiz.print("");
         } else {
-            System.out.println("Erro de sintaxe na posicao: " + pos);
+            throw new Exception("Erro de sintaxe na posicao: " + pos);
         }
     }
 
@@ -525,7 +525,7 @@ public class AnaliseSintatica {
         return this.raiz;
     }
 
-    public static void main(String[] args, String fileName) {
+    public static void main(String[] args, String fileName) throws Exception{
 
         AnaliseLexica analise = new AnaliseLexica();
         InputStream in;
@@ -535,7 +535,7 @@ public class AnaliseSintatica {
             entrada = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             in.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            IO.println(e.getMessage());
         }
 
         AnaliseResult res = analise.analisar(entrada);

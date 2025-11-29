@@ -18,10 +18,8 @@ public class AnaliseSemantica {
         this.symbolTable = new HashMap<>(Map.of()); // hashmap mutavel
     }
 
-    public void analisar(No arvore) {
-        for (No child : arvore.children) {
-            //System.out.println(child.name);
-            
+    public void analisar(No arvore) throws Exception {
+        for (No child : arvore.children) {  
             checkType(child, symbolTable);
             analisar(child);
         }
@@ -75,14 +73,12 @@ public class AnaliseSemantica {
                 return null;
         }
         if (child.getSize() > 3) {
-            System.out.println(child.get(3).getToken().getTipo());
-            System.out.println(child.get(3).getToken().getClasse());
             sym.setValue(child.get(3).name);
         }
         return symbolTable.get(varName);
     }
 
-private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
+private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) throws Exception {
 
     // 1) id da atribuição (antes do '=')
     No id = atrib.get("id");
@@ -111,9 +107,6 @@ private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
 
     if (expr == null) return;
 
-    // 3) valida TODA a expressão (todos os ids internos)
-    checkAllExpr(expr, tabela);
-
     // 4) valida tipos (usa o seu checkType principal)
     Symbol tExpr = checkType(expr, tabela);
     Symbol tId   = tabela.get(id.name);
@@ -121,7 +114,7 @@ private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
     if (tExpr == null || tId == null) return;
 
     if (!tExpr.getType().equals(tId.getType())) {
-        System.err.println(
+        throw new Exception(
             "Erro de tipo: atribuição de " + tExpr.getType() +
             " para variável " + id.name + " (" + tId.getType() + ")"
         );
@@ -132,9 +125,8 @@ private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
         return symbolTable.get(child.name).getType();
 
     }
-    private Symbol checkTypeExpMath(No no, HashMap<String, Symbol> tabelaSimbolos) {
+    private Symbol checkTypeExpMath(No no, HashMap<String, Symbol> tabelaSimbolos) throws Exception{
         if (no.children.isEmpty()) return null;
-        checkAllExpr(no, tabelaSimbolos);
         Symbol left = checkType(no.children.get(0), tabelaSimbolos);
         Symbol right = no.children.size() > 2 ? checkType(no.children.get(2), tabelaSimbolos) : left;
 
@@ -142,11 +134,10 @@ private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
         if (left.getType().equals(right.getType()) && right.getType().equals(left.getType())) {
             return new Symbol(new Token("int", 2));
         }
-        System.err.println("Operação aritmética inválida: " + left.getType() + " e " + right.getType());
-        return null;
+        throw new Exception("Operação aritmética inválida: " + left.getType() + " e " + right.getType());
     }
 
-    private Symbol checkType(No no, HashMap<String, Symbol> tabelaSimbolos) {
+    private Symbol checkType(No no, HashMap<String, Symbol> tabelaSimbolos) throws Exception {
         if (no == null) return null;
 
         switch (no.name) {
@@ -162,7 +153,7 @@ private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
                     id = no.get(0);
                 }
                 if (!tabelaSimbolos.containsKey(id.name)) {
-                    System.err.println("Variável não declarada: " + id.name);
+                    throw new Exception("Variável não declarada: " + id.name);
                 }
                 return tabelaSimbolos.get(id.name);
 
@@ -209,32 +200,14 @@ private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
                 return null;
         }
     }
-    private void checkAllExpr(No no, HashMap<String, Symbol> tabela) {
-        if (no == null) return;
 
-        if (no.name.equals("id")) {
-            String lex = no.get(0).token.getLexema();
-            if (!tabela.containsKey(lex)) {
-                System.err.println("Variável não declarada: " + lex);
-            }
-
-            // outros terminais (literals) ignoram
-            return;
-        }
-
-        for (No child : no.children) {
-            checkAllExpr(child, tabela);
-        }
-    }
-    private Symbol checkTypeExpLogic(No no, HashMap<String, Symbol> tabelaSimbolos) {
+    private Symbol checkTypeExpLogic(No no, HashMap<String, Symbol> tabelaSimbolos) throws Exception {
 
         if (no.children.isEmpty()) return null;
-        checkAllExpr(no, tabelaSimbolos);
         if (no.name.equals("NOT")) {
             Symbol t = checkType(no.children.get(0), tabelaSimbolos);
             if (!t.getType().equals("boolean")) {
-                System.err.println("'not' aplicado a tipo não-booleano: " + t.getType());
-                return null;
+                throw new Exception("'not' aplicado a tipo não-booleano: " + t.getType());
             }
             return new Symbol(new Token("boolean", 0));
         } else if (no.name.equals("AND") || no.name.equals("OR")) {
@@ -243,9 +216,8 @@ private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
                 Symbol t2 = checkType(no.children.get(1), tabelaSimbolos);
                 if (t1 == null || t2 == null) return null;
                 if (!"bool".equals(t1.getType()) || !"bool".equals(t2.getType())) {
-                    System.err.println("Operador lógico '" + no.name + "' aplicado a tipos não-booleanos: " 
+                    throw new Exception("Operador lógico '" + no.name + "' aplicado a tipos não-booleanos: " 
                         + (t1!=null?t1.getType():"null") + " e " + (t2!=null?t2.getType():"null"));
-                    return null;
                 }
                 return new Symbol(new Token("boolean", 0));
             }
@@ -265,7 +237,7 @@ private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
         }
     }
 
-    public static void main(String[] args, String fileName) {
+    public static void main(String[] args, String fileName) throws Exception {
         AnaliseLexica analise = new AnaliseLexica();
         InputStream in;
         String entrada = null;
@@ -274,7 +246,7 @@ private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
             entrada = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             in.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            IO.println(e.getMessage());
         }
 
         AnaliseResult res = analise.analisar(entrada);

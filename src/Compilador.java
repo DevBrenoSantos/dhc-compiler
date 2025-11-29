@@ -14,6 +14,7 @@ public class Compilador {
     private static Scanner input = new Scanner(System.in);    
     private static String fileName = "";
     public static void main(String[] args) {
+        IO.println("\n============ COMPILADOR LC1 - Por Luigi Fernando e Ulisses Santana ============\n");
         menu(args);
     }
 
@@ -48,10 +49,18 @@ public class Compilador {
                 AnaliseLexica.main(args, fileName);
                 break;
             case "2":
-                AnaliseSintatica.main(args, fileName);
+                try {
+                    AnaliseSintatica.main(args, fileName);
+                } catch (Exception e) {
+                    IO.println(e.getMessage());
+                }
                 break;
             case "3":
-                AnaliseSemantica.main(args, fileName);
+                try {
+                    AnaliseSemantica.main(args, fileName);
+                } catch (Exception e) {
+                    IO.println(e.getMessage());
+                }
                 break;
             default:
                 IO.println("Opção inválida. Selecione entre 1, 2 e 3.");
@@ -63,7 +72,7 @@ public class Compilador {
 
 
     public static void menu(String[] args) {
-        IO.println("COMPILADOR LC1 - Por Luigi Fernando e Ulisses Santana\n");
+
         IO.print("""           
             Arquivos de Entrada
             [1]. codigo_fonte_LC.txt
@@ -91,7 +100,7 @@ public class Compilador {
         }
         else IO.println("\nFim da compilação!");
         
-        IO.println("Pressione \"r\" para voltar ao início, ou qualquer tecla para encerrar.");
+        IO.println("Pressione \"r\" para voltar ao início, ou qualquer tecla para encerrar.\n");
 
         String again = input.nextLine();
 

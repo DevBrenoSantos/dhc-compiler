@@ -411,8 +411,7 @@ public class AnaliseLexica {
             entrada = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             in.close();
         } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            IO.println(e.getMessage());
         }
 
 
