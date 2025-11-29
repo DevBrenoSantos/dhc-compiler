@@ -4,40 +4,33 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-
+import java.util.HashMap;
+import java.util.Map;
 import functions.AnaliseLexica.AnaliseResult;
 
 public class AnaliseSemantica {
     
     private No arvore;
-    private List<Symbol> symbolTable;
+
+    private HashMap<String, Symbol> symbolTable;
     AnaliseSemantica(No arvore) {
         this.arvore = arvore;
-        this.symbolTable = new ArrayList<>();
+        this.symbolTable = new HashMap<>(Map.of()); // hashmap mutavel
     }
 
     public void analisar(No arvore) {
         for (No child : arvore.children) {
-
+            //System.out.println(child.name);
             
-        switch (child.name) {
-            case "DECL": checkDeclaration(child); break; // TYPE
-            case "ATTR": checkAttribution(child); break;
-            //case "EXPA": checkMathExpression(child); break;
-            //case "EXPL": checkLogicExpression(child); break;
-        }
+            checkType(child, symbolTable);
             analisar(child);
         }
     }
-    // TODO: implementar verificações tipo -> id, procurar um jeito eficiente de fazer isso
-    public void checkDeclaration(No child) {
+    public Symbol checkDeclaration(No child) {
 
-        int pos = 0;
         String type;
         String varName;
+        Symbol sym;
         if (child.get("final") != null) {
             varName = child.get(1).name;
             type = "final";
@@ -48,262 +41,275 @@ public class AnaliseSemantica {
         }
         else {
             IO.println("Erro: Declaracao sem tipo");
+            return null;
+        }
+        switch (type) {
+            case "int":
+                sym = new Symbol(child.get(1).getToken());
+                symbolTable.put(varName, sym);
+                break;
+            case "byte":
+                sym = new Symbol(child.get(1).getToken());
+                symbolTable.put(varName, sym);
+                break;
+            case "boolean":
+                sym = new Symbol(child.get(1).getToken());
+                symbolTable.put(varName, sym);
+                break;
+            case "string":
+                sym = new Symbol(child.get(1).getToken());
+                symbolTable.put(varName, sym);
+                break;
+            case "final":
+                if (child.getSize() > 1) {
+                    sym = new Symbol(child.get(3).getToken());
+                    type = child.get(3).token.getClasse();
+
+                    if (type.equals("Literal Byte")) type = "int";
+
+                    symbolTable.put(varName, new Symbol(child.get(3).getToken())); 
+                    break;         
+                }
+            default:
+                IO.println("Erro: Tipo nao reconhecido: " + type);
+                return null;
+        }
+        if (child.getSize() > 3) {
+            System.out.println(child.get(3).getToken().getTipo());
+            System.out.println(child.get(3).getToken().getClasse());
+            sym.setValue(child.get(3).name);
+        }
+        return symbolTable.get(varName);
+    }
+
+private void checkAttribution(No atrib, HashMap<String, Symbol> tabela) {
+
+    // 1) id da atribuição (antes do '=')
+    No id = atrib.get("id");
+    if (id == null) return;
+
+    // valida id de destino
+    checkType(id, tabela);
+
+    // 2) expressão do lado direito da atribuição
+    No expr = null;
+
+    if (atrib.get("EXPA") != null) {
+        expr = atrib.get("EXPA");
+    }
+    else if (atrib.get("EXPL") != null) {
+        expr = atrib.get("EXPL");
+    }
+    else if (atrib.children.size() > 1) {
+        // casos como:
+        //   result = 5;
+        //   result = "oi";
+        //   result = true;
+        // pega o nó logo após o "id"
+        expr = atrib.children.get(2);
+    }
+
+    if (expr == null) return;
+
+    // 3) valida TODA a expressão (todos os ids internos)
+    checkAllExpr(expr, tabela);
+
+    // 4) valida tipos (usa o seu checkType principal)
+    Symbol tExpr = checkType(expr, tabela);
+    Symbol tId   = tabela.get(id.name);
+
+    if (tExpr == null || tId == null) return;
+
+    if (!tExpr.getType().equals(tId.getType())) {
+        System.err.println(
+            "Erro de tipo: atribuição de " + tExpr.getType() +
+            " para variável " + id.name + " (" + tId.getType() + ")"
+        );
+    }
+}
+
+    public String getVarType(No child) {
+        return symbolTable.get(child.name).getType();
+
+    }
+    private Symbol checkTypeExpMath(No no, HashMap<String, Symbol> tabelaSimbolos) {
+        if (no.children.isEmpty()) return null;
+        checkAllExpr(no, tabelaSimbolos);
+        Symbol left = checkType(no.children.get(0), tabelaSimbolos);
+        Symbol right = no.children.size() > 2 ? checkType(no.children.get(2), tabelaSimbolos) : left;
+
+        if (left == null || right == null) return null;
+        if (left.getType().equals(right.getType()) && right.getType().equals(left.getType())) {
+            return new Symbol(new Token("int", 2));
+        }
+        System.err.println("Operação aritmética inválida: " + left.getType() + " e " + right.getType());
+        return null;
+    }
+
+    private Symbol checkType(No no, HashMap<String, Symbol> tabelaSimbolos) {
+        if (no == null) return null;
+
+        switch (no.name) {
+
+            case "DECL": return checkDeclaration(no); // TYPE
+            case "ATTR": 
+                checkAttribution(no, symbolTable);
+                return null;
+            // Identificador
+            case "id":
+                No id = no;
+                if (no.name.equals("id")) {
+                    id = no.get(0);
+                }
+                if (!tabelaSimbolos.containsKey(id.name)) {
+                    System.err.println("Variável não declarada: " + id.name);
+                }
+                return tabelaSimbolos.get(id.name);
+
+
+            case "true":
+            case "false":
+                return new Symbol(no.token);
+
+            // Expressões aritméticas
+            case "EXPA":
+            case "OPMATH":
+                return checkTypeExpMath(no, tabelaSimbolos);
+
+            // Expressões lógicas
+            case "EXPL":
+            case "OPLOG":
+            case "EXPL_REL":
+            case "AND":
+            case "and":
+            case "OR":
+            case "or":
+            case "NOT":
+                return checkTypeExpLogic(no, tabelaSimbolos);
+
+            // Parênteses e agrupamentos
+            case "(":
+            case ")":
+                if (!no.children.isEmpty()) {
+                    return checkType(no.children.get(0), tabelaSimbolos);
+                }
+                return null;
+
+            default:
+                // Se não for um nó terminal ou conhecido, percorre os filhos
+                if (!no.children.isEmpty()) {
+                    Symbol tipo = null;
+                    for (No child : no.children) {
+                        tipo = checkType(child, tabelaSimbolos);
+                        if (tipo != null) break; // pega o tipo do primeiro filho válido
+                    }
+                    return tipo;
+                }
+                // Não é terminal nem possui filhos → ignora
+                return null;
+        }
+    }
+    private void checkAllExpr(No no, HashMap<String, Symbol> tabela) {
+        if (no == null) return;
+
+        if (no.name.equals("id")) {
+            String lex = no.get(0).token.getLexema();
+            if (!tabela.containsKey(lex)) {
+                System.err.println("Variável não declarada: " + lex);
+            }
+
+            // outros terminais (literals) ignoram
             return;
         }
 
-        
+        for (No child : no.children) {
+            checkAllExpr(child, tabela);
+        }
+    }
+    private Symbol checkTypeExpLogic(No no, HashMap<String, Symbol> tabelaSimbolos) {
 
-        switch (type) {
-            case "int":
-                symbolTable.add(new Symbol(varName, "int", true, child.get(1).getToken()));
-                break;
-            case "byte":
-                symbolTable.add(new Symbol(varName, "byte", true, child.get(1).getToken()));
-                break;
-            case "boolean":
-                symbolTable.add(new Symbol(varName, "boolean", true, child.get(1).getToken()));
-                break;
-            case "string":
-                symbolTable.add(new Symbol(varName, "string", true, child.get(1).getToken()));
-                break;
-            case "final":
-                symbolTable.add(new Symbol(varName, "final", true, child.get(1).getToken()));
-                break;
-            default:
-                IO.println("Erro: Tipo nao reconhecido: " + type);
+        if (no.children.isEmpty()) return null;
+        checkAllExpr(no, tabelaSimbolos);
+        if (no.name.equals("NOT")) {
+            Symbol t = checkType(no.children.get(0), tabelaSimbolos);
+            if (!t.getType().equals("boolean")) {
+                System.err.println("'not' aplicado a tipo não-booleano: " + t.getType());
+                return null;
+            }
+            return new Symbol(new Token("boolean", 0));
+        } else if (no.name.equals("AND") || no.name.equals("OR")) {
+            if (no.children.size() >= 2) {
+                Symbol t1 = checkType(no.children.get(0), tabelaSimbolos);
+                Symbol t2 = checkType(no.children.get(1), tabelaSimbolos);
+                if (t1 == null || t2 == null) return null;
+                if (!"bool".equals(t1.getType()) || !"bool".equals(t2.getType())) {
+                    System.err.println("Operador lógico '" + no.name + "' aplicado a tipos não-booleanos: " 
+                        + (t1!=null?t1.getType():"null") + " e " + (t2!=null?t2.getType():"null"));
+                    return null;
+                }
+                return new Symbol(new Token("boolean", 0));
+            }
+            return null;
+
+        } else if (no.name.equals("EXPL_REL")) {
+            Symbol left = checkType(no.children.get(0), tabelaSimbolos);
+            Symbol right = checkType(no.children.get(2), tabelaSimbolos);
+            if (!left.getType().equals(right.getType())) {
+                System.err.println("Comparação inválida entre " + left.getType() + " e " + right.getType());
+                return null;
+            }
+            return new Symbol(new Token("boolean", 0));
+
+        } else {
+            return checkType(no.children.get(0), tabelaSimbolos);
         }
     }
 
-    public void checkAttribution(No child) { // TODO: criar metodos de EXPR  e terminar checkAttribution
-
-        No id = child.get("id").get(0); // variavel antes do '='
-        for (Symbol sym : symbolTable) {
-            if (sym.getName().equals(id.name)) { // id encontrado
-
-                String type = sym.getType();
-                if (child.get("EXPA") != null) {
-                    checkMathExpression(child.get("EXPA"));
-                    return;
-                }
-                else if (child.get("EXPL") != null) {
-                    // verificar se é logic expression
-                    return;
-                }
-                else if (child.get(0).token.getId() == 4) {
-                    String varType = getVarType(child.get(0));
-                    if (!varType.equals(type)) {
-                        IO.println("Erro: Atribuicao de variavel do tipo " + varType + " para variavel do tipo " + type);
-                        return;
-                    }
-                    return;
-                }
-                else if (child.get(0).token.getId() == 6) { // literal string
-                    if (!type.equals("string")) {
-                        IO.println("Erro: Atribuicao de literal string para variavel do tipo " + type);
-                        return;
-                    }
-                    return;
-
-                }
-                else if (child.get(0).token.getId() == 5) { // literal int
-                    if (!type.equals("int") && !type.equals("byte")) {
-                        IO.println("Erro: Atribuicao de literal int para variavel do tipo " + type);
-                        return;
-                    }
-                    return;
-                }
-
-                else {
-                    IO.println("Erro: Expressao invalida na atribuicao para " + id.name);
-                    return;
-                }
-            }
-        }
-
-        IO.println("Erro: id não declarado: " + id);
-    }
-
-    public String getVarType(No child) {
-        for (Symbol sym : symbolTable) {
-            if (sym.getName().equals(child.name)) {
-                return sym.getType();
-            }
-        }
-        return null;
-    }
-    public void checkMathExpression(No expa) { // EXPA
-        int length = expa.getSize();
-        String tipoEsperado = null;
-        for (int i=0; i<length; i+=2) {
-
-            if (expa.get(i).getToken().getClasse() == 4) { // identificador
-                tipoEsperado = getVarType(expa.get(i));
-                if (tipoEsperado == null) {
-                    IO.println("Erro: Variavel nao declarada na expressao matematica: " + expa.get(i).name);
-                    continue;
-                }
-                if (!Set.of("int", "string").contains(tipoEsperado)) {
-                    IO.println("Erro: Tipo não suportado: " + tipoEsperado + " na expressao matematica");
-                }
-            }
-
-            else if (expa.get(i).getToken().getClasse() == 5) { // constante numerica
-                if (tipoEsperado != "int") {
-                    IO.println("Erro: Tipo esperado " + tipoEsperado + " mas constante numerica encontrada na expressao matematica");
-                    return;
-                }
-                tipoEsperado = "int";
-            }
-            else if (expa.get(i).getToken().getClasse() == 6) { // constante string
-                if (tipoEsperado != "string") {
-                    IO.println("Erro: Tipo esperado " + tipoEsperado + " mas constante string encontrada na expressao matematica");
-                    return;
-                }
-
-                if (!expa.get(i+1).name.equals("+") || (i+1 < length)) {
-                    IO.println("Erro: Operador invalido " + expa.get(i-1).getToken().getLexema() + " para concatenacao de strings");
-                    return;
-                }
-                
-
-                tipoEsperado = "string";
-
-            }
-            else {
-                IO.println("Erro: Valor com tipo invalido detectado na expressão");
-                return;
-            }
-        }
-    }
-
-    public void checkLogicExpression(No expl) { // EXPL
-        int length = expl.getSize();
-        String tipoEsperado = null;
-        Set<String> opLogicos = Set.of("==", "<", ">", "<>", ">=", "<=");
-        Set<String> opAndOr = Set.of("and", "or");
-        // a < b and b < c ...
-        String opExpected = "logic";
-        for (int i=0; i<length; i+=2) {
-
-            
-
-            if (expl.get(i).getToken().getClasse() == 4) { // identificador
-                tipoEsperado = getVarType(expl.get(i));
-                if (tipoEsperado == null) {
-                    IO.println("Erro: Variavel nao declarada na expressao logica: " + expl.get(i).name);
-                    continue;
-                }
-                if (!Set.of("int", "string").contains(tipoEsperado)) {
-                    IO.println("Erro: Tipo não suportado: " + tipoEsperado + " na expressao logica");
-                }
-            }
-
-            else if (expl.get(i).getToken().getClasse() == 5) { // constante numerica
-                if (tipoEsperado != "int") {
-                    IO.println("Erro: Tipo esperado " + tipoEsperado + " mas constante numerica encontrada na expressao matematica");
-                    return;
-                }
-                tipoEsperado = "int";
-            }
-            else if (expl.get(i).getToken().getClasse() == 6) { // constante string
-                if (tipoEsperado != "string") {
-                    IO.println("Erro: Tipo esperado " + tipoEsperado + " mas constante string encontrada na expressao matematica");
-                    return;
-                }
-                if (!expl.get(i+1).getToken().getLexema().equals("==") || (i+1 < length)) {
-                    IO.println("Erro: Operador invalido " + expl.get(i-1).getToken().getLexema() + " para manipulacao de strings");
-                    return;
-                }
-                tipoEsperado = "string";
-
-            }
-            else {
-                IO.println("Erro: Valor com tipo invalido detectado na expressão");
-                return;
-            }
-        }
-    }
-
-    public String getClasseStr(No child) {
-        switch (child.getToken().getClasse()) {
-            case 0: return "Boolean";
-            case 1: return "Palavra reservada";
-            case 2: return "Tipo";
-            case 3: return "Operador";
-            case 4: return "Identificador";
-            case 5: return "Numero";
-            case 6: return "String";
-            default: return "Desconhecido";
-        }
-
-    }
-
-    public List<Symbol> getSymbolTable() {
-        return this.symbolTable;
-    }
-
-    public static void main(String[] args) {
-                AnaliseLexica analise = new AnaliseLexica();
+    public static void main(String[] args, String fileName) {
+        AnaliseLexica analise = new AnaliseLexica();
         InputStream in;
         String entrada = null;
         try {
-            in = new BufferedInputStream(new FileInputStream("docs/codigo_fonte_LC.txt"));
+            in = new BufferedInputStream(new FileInputStream("src/codes/" + fileName));
             entrada = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             in.close();
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
 
         AnaliseResult res = analise.analisar(entrada);
         AnaliseSintatica sintatica = new AnaliseSintatica(res.tokens);
-
-        sintatica.writeTree();
+        sintatica.writeTree(fileName);
 
         AnaliseSemantica semantica = new AnaliseSemantica(sintatica.getRaiz());
         semantica.analisar(semantica.arvore);
 
-        IO.println();
-
-/*         for (Symbol sym : semantica.getSymbolTable()) {
-            IO.println("Declaracao: " + sym.getName() + " Tipo: " + sym.getType());
-            IO.println("Token id: " + sym.getToken().getId() + " Lexema: " + sym.getToken().getLexema());
-            IO.println("-----");
-        } */
     }
 
 }
 
 
 class Symbol {
-    private String name;
+    private String id;
     private String type;
-    private boolean initialized;
-    private String scope;
+    private String value;
     private Token token;
 
-    public Symbol(String name, String type) {
-        this.name = name;
-        this.type = type;
-        this.initialized = false;
-        this.scope = "global";
+    public Symbol(String value, Token token) {
+        this.id = token.getLexema();
+        this.type = token.getTipo();
+        this.value = value;
+        this.token = token;
     }
-
-    public Symbol(String name, String type, boolean initialized, Token token) {
-        this.name = name;
-        this.type = type;
-        this.initialized = initialized;
-        this.scope = "global";
+    public Symbol(Token token) {
+        this.id = token.getLexema();
+        this.type = token.getTipo();
         this.token = token;
     }
 
-    public String getName() {
-        return name;
-    }
-    public String getType() {
-        return type;
-    }
-    public Token getToken() {
-        return token;
-    }
+    public void setValue(String value) { this.value = value; }
+    public String getId() { return id; }
+    public String getType() { return type; }
+    public Token getToken() { return token; }
+    public String getValue() { return value; }
 }

@@ -1,4 +1,4 @@
-{ Exemplo de Programa na linguagem LC }
+/* Exemplo de Programa na linguagem LC */
 int n;
 string nome;
 boolean naoTerminou;
@@ -12,6 +12,6 @@ begin
     while naoTerminou begin
         writeln,"Ola' ", nome;
         n=n+1;
-        naoTerminou=n < MAXITER or (n + MAXITER) >= MAXITER;
+        naoTerminou=n<MAXITER;
     end
 end

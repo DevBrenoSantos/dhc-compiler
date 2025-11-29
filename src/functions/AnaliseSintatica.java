@@ -503,7 +503,7 @@ public class AnaliseSintatica {
         }
     }
 
-    public void writeTree() {
+    public void writeTree(String fileName) {
 
         String output = "";
         analisar();
@@ -511,11 +511,10 @@ public class AnaliseSintatica {
             output = raiz.write("");
         }
         try {
-            OutputStream os = new BufferedOutputStream(new FileOutputStream("src/output/arvore.txt"));
+            OutputStream os = new BufferedOutputStream(new FileOutputStream("src/output/arvore_" + fileName));
             os.write(output.getBytes());
             os.close();
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
@@ -526,23 +525,22 @@ public class AnaliseSintatica {
         return this.raiz;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args, String fileName) {
 
         AnaliseLexica analise = new AnaliseLexica();
         InputStream in;
         String entrada = null;
         try {
-            in = new BufferedInputStream(new FileInputStream("docs/teste2.txt"));
+            in = new BufferedInputStream(new FileInputStream("src/codes/" + fileName));
             entrada = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             in.close();
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
 
         AnaliseResult res = analise.analisar(entrada);
         AnaliseSintatica sintatica = new AnaliseSintatica(res.tokens);
-        sintatica.writeTree();
+        sintatica.writeTree(fileName);
 
     }
 

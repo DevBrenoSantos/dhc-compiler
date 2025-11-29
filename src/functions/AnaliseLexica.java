@@ -402,12 +402,12 @@ public class AnaliseLexica {
        Exemplo de teste 
        -----------------------------
     */
-    public static void main(String[] args) {
+    public static void main(String[] args, String fileName) {
         AnaliseLexica analise = new AnaliseLexica();
         InputStream in;
         String entrada = null;
         try {
-            in = new BufferedInputStream(new FileInputStream("docs/codigo_fonte_LC.txt"));
+            in = new BufferedInputStream(new FileInputStream("src/codes/" + fileName));
             entrada = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             in.close();
         } catch (Exception e) {

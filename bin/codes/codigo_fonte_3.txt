@@ -1,0 +1,5 @@
+boolean result;
+
+begin
+    result = (a < b) and not((x + y) >= z);
+end

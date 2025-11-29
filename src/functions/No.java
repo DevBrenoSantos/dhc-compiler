@@ -13,7 +13,7 @@ public class No {
     No(String name) {
         this.name = name;
         this.children = new ArrayList<>();
-        this.token = new Token(name);  // Token dummy com classe = 0
+        this.token = new Token(name, 0);  // Token dummy com classe = 0
     }
 
     // Construtor para nós TERMINAIS (com token da análise léxica)
@@ -22,23 +22,7 @@ public class No {
         this.children = new ArrayList<>();
         this.token = token;  // Usa o token original da análise léxica
     }
-
-    No(String name, No parent) {
-        this.name = name;
-        this.parent = parent;
-        this.parent.addChild(new No(name));
-        this.children = new ArrayList<>();
-        this.token = new Token(name);
-    }
-
-    // Construtor para nós TERMINAIS com parent
-    No(String name, Token token, No parent) {
-        this.name = name;
-        this.parent = parent;
-        this.children = new ArrayList<>();
-        this.token = token;
-    }
-
+    
     No get(String name) {
         List<No> rev = children.reversed();
         for (No c : rev) {
